@@ -65,6 +65,17 @@ One personality animation: `rail-breathe` on the due rung (2.4s soft pulse).
 `prefers-reduced-motion`: pulse becomes a static ring; all transitions
 collapse to instant.
 
+## Charts
+
+Plain HTML/CSS marks, no chart library. Difficulty uses dedicated **mark
+tokens** (`easy-mark`/`medium-mark`/`hard-mark` — deeper steps of the text
+hues, validated for the dark surface: lightness band, monotonic-L CVD
+separation, ≥3:1 contrast). Identity is never color-alone: fixed
+Easy→Medium→Hard order, 2px surface gaps between segments, dot+ink-text
+legends with mono counts. Magnitude charts (week load, topic bars) are
+single-hue (`heat3`), with today's bar in `olive`. Values/labels always wear
+text tokens, never series colors. Tooltips via `title`.
+
 ## Voice
 
 Terse, factual, evening-toned: "3 reviews due", "due tonight", "All clear

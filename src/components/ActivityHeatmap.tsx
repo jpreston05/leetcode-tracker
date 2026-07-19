@@ -1,12 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
-import { addDaysISO, computeStreaks, formatShort, todayISO } from "@/lib/checkpoints";
-
-interface DayActivity {
-  day: string;
-  solved: number;
-  reviewed: number;
-  total: number;
-}
+import { addDaysISO, computeStreaks, formatShort } from "@/lib/checkpoints";
+import type { DayActivity } from "@/lib/stats";
 
 // Intensity buckets: 0, 1, 2-3, 4-5, 6+ — our olive ramp, not GitHub green.
 const CELL_CLASSES = ["bg-raised", "bg-heat1", "bg-heat2", "bg-heat3", "bg-heat4"];
@@ -24,20 +17,11 @@ function weekday(iso: string): number {
 }
 
 // Contribution-graph layout: Sunday-first columns, current week rightmost,
-// trailing 52 weeks, fed by the activity_daily view.
-export default async function ActivityHeatmap() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("activity_daily")
-    .select("*")
-    .overrideTypes<DayActivity[]>();
-
-  if (error) return <p className="text-sm text-danger">{error.message}</p>;
-
-  const today = todayISO();
-  const byDay = new Map((data ?? []).map((d) => [d.day, d]));
+// trailing 52 weeks, fed by the activity_daily view (fetched by the page).
+export default function ActivityHeatmap({ rows, today }: { rows: DayActivity[]; today: string }) {
+  const byDay = new Map(rows.map((d) => [d.day, d]));
   const streaks = computeStreaks(
-    (data ?? []).filter((d) => d.total > 0).map((d) => d.day),
+    rows.filter((d) => d.total > 0).map((d) => d.day),
     today
   );
 
