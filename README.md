@@ -51,9 +51,22 @@ to confirm a 200.
    Authentication → URL Configuration → set Site URL to your Vercel URL and add
    `https://YOUR-APP.vercel.app/auth/callback` to Redirect URLs.
 
-## How review scheduling works
+## How review scheduling works (v2: checkpoint ladders)
 
-Every problem sits in a Leitner box 1–5 with intervals 1 / 3 / 7 / 14 / 30 days.
-Review it cleanly → up a box. Struggle or fail → back to box 1. A problem is
-"due" when its `next_review_date` is today or earlier. Each attempt is appended
-to `reviews` — history is never overwritten.
+Every problem gets a 7-rung ladder: 1 day → 3 days → 1 week → 2 weeks →
+1 month → 3 months → 6 months. Rungs unlock one at a time, and scheduling is
+**completion-anchored**: finishing rung N today puts rung N+1 at today + its
+interval, so being late never compresses the rest of the schedule. A review
+that goes badly (struggled/failed) inserts a 3-day catch-up before the ladder
+continues; only a clean solve advances. Completing all 7 rungs graduates the
+problem.
+
+The lock is enforced in Postgres, not the UI: the `checkpoints` table has no
+write policies, and the only write path is the `complete_checkpoint` function,
+which rejects anything that isn't the due, unlocked rung.
+
+**v2 upgrade of an existing v1 project:** run
+[`supabase/v2-checkpoints.sql`](supabase/v2-checkpoints.sql) once in the SQL
+editor (after `schema.sql`). It creates `checkpoints` + the `activity_daily`
+heatmap view, builds ladders for existing questions, and drops the v1
+`reviews` table and Leitner columns.
