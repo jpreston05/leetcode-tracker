@@ -103,5 +103,10 @@ function Cell({ day, activity }: { day: string; activity?: DayActivity }) {
   const title = total
     ? `${total} on ${formatShort(day)} — ${activity!.solved} solved, ${activity!.reviewed} review${activity!.reviewed === 1 ? "" : "s"}`
     : `No activity on ${formatShort(day)}`;
-  return <div className={`h-3 w-3 rounded-[3px] ${CELL_CLASSES[intensity(total)]}`} title={title} />;
+  return (
+    <div
+      className={`h-3 w-3 rounded-[3px] transition-shadow duration-150 hover:ring-1 hover:ring-muted ${CELL_CLASSES[intensity(total)]}`}
+      title={title}
+    />
+  );
 }

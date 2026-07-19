@@ -21,7 +21,7 @@ export default function TopicCoverage({ topics }: { topics: TopicRow[] }) {
         <span className="data text-right">clean</span>
       </div>
       {shown.map(({ topic, count, reviews, cleanPct }) => (
-        <div key={topic} className="grid grid-cols-[7rem_1fr_2rem_3.5rem] items-center gap-3">
+        <div key={topic} className="group grid grid-cols-[7rem_1fr_2rem_3.5rem] items-center gap-3">
           <Link
             href={`/problems?topic=${encodeURIComponent(topic)}`}
             className="truncate text-sm text-muted transition-colors duration-150 hover:text-ink hover:underline"
@@ -31,7 +31,7 @@ export default function TopicCoverage({ topics }: { topics: TopicRow[] }) {
           </Link>
           <div className="h-1.5 rounded-full">
             <div
-              className="h-full min-w-1 rounded-full bg-heat3"
+              className="h-full min-w-1 rounded-full bg-heat3 transition-colors duration-150 group-hover:bg-heat4"
               style={{ width: `${(count / max) * 100}%` }}
             />
           </div>

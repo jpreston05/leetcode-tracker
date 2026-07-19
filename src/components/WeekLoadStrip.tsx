@@ -14,15 +14,19 @@ export default function WeekLoadStrip({ load }: { load: { date: string; count: n
           i === 0 ? "today" : `on ${label} ${new Date(`${date}T12:00:00`).getDate()}`
         }`;
         return (
-          <div key={date} className="flex flex-1 flex-col items-center gap-1.5" title={title}>
+          <div key={date} className="group flex flex-1 flex-col items-center gap-1.5" title={title}>
             <div className="flex h-14 w-full items-end">
               {count > 0 ? (
                 <div
-                  className={`w-full rounded-sm ${i === 0 ? "bg-olive" : "bg-heat3"}`}
+                  className={`w-full rounded-sm transition-colors duration-150 ${
+                    i === 0
+                      ? "bg-olive group-hover:bg-olive-bright"
+                      : "bg-heat3 group-hover:bg-heat4"
+                  }`}
                   style={{ height: `${Math.max((count / max) * 100, 12)}%` }}
                 />
               ) : (
-                <div className="h-0.5 w-full rounded-sm bg-raised" />
+                <div className="h-0.5 w-full rounded-sm bg-raised transition-colors duration-150 group-hover:bg-line" />
               )}
             </div>
             <span className={`data text-xs ${count > 0 ? "text-ink" : "text-faint"}`}>{count}</span>

@@ -34,7 +34,7 @@ function ProblemRow({ q, today }: { q: ProblemListRow; today: string }) {
 
   return (
     <li className="border-b border-line/60">
-      <div className="flex items-center gap-3 py-3">
+      <div className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors duration-150 hover:bg-surface">
         <Link
           href={`/problems/${q.id}`}
           className="group flex min-w-0 flex-1 items-baseline gap-2"
