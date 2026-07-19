@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppNav from "@/components/AppNav";
+import PhotoUpload from "@/components/PhotoUpload";
 import ReviewDialog from "@/components/ReviewDialog";
 import { createClient } from "@/lib/supabase/server";
 import { INTERVALS_DAYS } from "@/lib/leitner";
@@ -27,6 +28,15 @@ export default async function ProblemDetailPage({
   ]);
 
   if (!question) notFound();
+
+  // Private bucket: mint a short-lived signed URL per page view.
+  let photoUrl: string | null = null;
+  if (question.photo_path) {
+    const { data } = await supabase.storage
+      .from("note-photos")
+      .createSignedUrl(question.photo_path, 3600);
+    photoUrl = data?.signedUrl ?? null;
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 p-8">
@@ -59,6 +69,20 @@ export default async function ProblemDetailPage({
       <div className="mb-8">
         <ReviewDialog questionId={question.id} currentBox={question.leitner_box} />
       </div>
+
+      <section className="mb-8">
+        <h2 className="mb-2 text-sm font-semibold text-gray-500">Paper notes</h2>
+        {photoUrl && (
+          // Plain <img>: signed URLs expire, so Next's image optimizer cache would break.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoUrl}
+            alt={`Handwritten notes for ${question.title}`}
+            className="mb-2 max-w-full rounded-lg border border-gray-200 dark:border-gray-800"
+          />
+        )}
+        <PhotoUpload questionId={question.id} hasPhoto={!!question.photo_path} />
+      </section>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-500">Review history</h2>
