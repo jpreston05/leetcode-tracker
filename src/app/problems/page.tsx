@@ -1,17 +1,8 @@
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
-import LadderRail from "@/components/LadderRail";
+import ProblemsList, { type ProblemListRow } from "@/components/ProblemsList";
 import { createClient } from "@/lib/supabase/server";
-import { formatShort, todayISO } from "@/lib/checkpoints";
-import { difficultyClass } from "@/lib/ui";
-import type { Checkpoint, Question } from "@/lib/types";
-
-type Row = Question & {
-  checkpoints: Pick<
-    Checkpoint,
-    "sequence" | "interval_label" | "due_date" | "status" | "is_catchup"
-  >[];
-};
+import { todayISO } from "@/lib/checkpoints";
 
 export default async function ProblemsPage({
   searchParams,
@@ -36,7 +27,7 @@ export default async function ProblemsPage({
       : query.or(`title.ilike.%${safe}%,topic.ilike.%${safe}%`);
   }
 
-  const { data: questions, error } = await query.overrideTypes<Row[]>();
+  const { data: questions, error } = await query.overrideTypes<ProblemListRow[]>();
   const filtered = Boolean(q?.trim() || topic);
 
   return (
@@ -98,66 +89,8 @@ export default async function ProblemsPage({
             </div>
           ))}
 
-        {!!questions?.length && (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-line text-xs text-faint">
-                  <th className="py-2 pr-4 font-medium">Problem</th>
-                  <th className="py-2 pr-4 font-medium">Topic</th>
-                  <th className="w-32 py-2 pr-4 font-medium">Ladder</th>
-                  <th className="py-2 text-right font-medium">Next</th>
-                </tr>
-              </thead>
-              <tbody>
-                {questions.map((q) => (
-                  <ProblemRow key={q.id} q={q} today={today} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {!!questions?.length && <ProblemsList rows={questions} today={today} />}
       </main>
     </>
-  );
-}
-
-function ProblemRow({ q, today }: { q: Row; today: string }) {
-  const pending = q.checkpoints.find((c) => c.status !== "done" && c.due_date !== null);
-  const graduated = !pending && q.checkpoints.length > 0;
-
-  return (
-    <tr className="group border-b border-line/60 transition-colors duration-150 hover:bg-surface">
-      <td className="py-3 pr-4">
-        <Link href={`/problems/${q.id}`} className="flex items-baseline gap-2">
-          <span className="data text-faint">{q.leetcode_number}</span>
-          <span className="font-medium group-hover:text-ink">{q.title}</span>
-          <span className={`text-xs ${difficultyClass[q.difficulty]}`}>{q.difficulty}</span>
-        </Link>
-      </td>
-      <td className="py-3 pr-4 text-muted">{q.topic}</td>
-      <td className="py-3 pr-4">
-        <LadderRail checkpoints={q.checkpoints} today={today} />
-      </td>
-      <td className="data py-3 text-right text-xs">
-        {graduated ? (
-          <span className="text-olive">graduated</span>
-        ) : pending ? (
-          <span
-            className={
-              pending.due_date! <= today
-                ? pending.due_date! < today
-                  ? "text-danger"
-                  : "text-olive"
-                : "text-muted"
-            }
-          >
-            {pending.due_date! <= today ? "due" : formatShort(pending.due_date!)}
-          </span>
-        ) : (
-          <span className="text-faint">—</span>
-        )}
-      </td>
-    </tr>
   );
 }

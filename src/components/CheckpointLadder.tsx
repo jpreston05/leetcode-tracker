@@ -91,7 +91,7 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
               )}
 
               {actionable && confirmingId === cp.id && (
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2 transition-[opacity,transform] duration-150 ease-strong starting:translate-y-1 starting:opacity-0">
                   {OUTCOMES.map(({ value, label }) => (
                     <button
                       key={value}

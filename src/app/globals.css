@@ -42,6 +42,9 @@
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* built-in CSS easings are too weak — strong ease-out for UI feedback */
+  --ease-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 :root {
@@ -72,12 +75,13 @@ body {
 /* ---------- component vocabulary ---------- */
 
 @layer components {
-  /* shared button chassis; modifier classes add color */
+  /* shared button chassis; modifier classes add color. Press feedback:
+     scale(0.97) on :active so the UI visibly hears every tap. */
   .btn,
   .btn-primary,
   .btn-secondary,
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-[color,background-color,border-color,opacity,transform] duration-150 ease-strong active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
     @apply bg-olive text-on-olive hover:bg-olive-bright;
