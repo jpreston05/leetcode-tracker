@@ -13,7 +13,7 @@ export default function SignOutButton() {
   }
 
   return (
-    <button onClick={signOut} className="text-sm text-gray-500 hover:underline">
+    <button onClick={signOut} className="btn-ghost h-8 text-[0.8125rem]">
       Sign out
     </button>
   );

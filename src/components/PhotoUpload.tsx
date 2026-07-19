@@ -53,9 +53,14 @@ export default function PhotoUpload({ questionId, hasPhoto }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <label className="cursor-pointer text-sm underline">
-        {busy ? "Uploading…" : hasPhoto ? "Replace notes photo" : "Attach notes photo"}
+    <div className="flex flex-col items-start gap-2">
+      <label className={`btn-secondary cursor-pointer ${busy ? "pointer-events-none opacity-50" : ""}`}>
+        <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none">
+          <rect x="1.75" y="3.75" width="12.5" height="9.5" rx="2" stroke="currentColor" strokeWidth="1.5" />
+          <circle cx="8" cy="8.5" r="2.25" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M5.5 3.5 6.5 2h3l1 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+        </svg>
+        {busy ? "Uploading…" : hasPhoto ? "Replace photo" : "Attach photo"}
         <input
           type="file"
           accept="image/*"
@@ -64,7 +69,8 @@ export default function PhotoUpload({ questionId, hasPhoto }: Props) {
           className="hidden"
         />
       </label>
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      <p className="text-xs text-faint">Compressed on-device before upload.</p>
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
 }

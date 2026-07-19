@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppNav from "@/components/AppNav";
 import CheckpointLadder from "@/components/CheckpointLadder";
+import LadderRail from "@/components/LadderRail";
 import PhotoUpload from "@/components/PhotoUpload";
 import { createClient } from "@/lib/supabase/server";
+import { formatShort, todayISO } from "@/lib/checkpoints";
+import { difficultyClass } from "@/lib/ui";
 import type { Checkpoint, Question } from "@/lib/types";
 
 export default async function ProblemDetailPage({
@@ -13,6 +16,7 @@ export default async function ProblemDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const today = todayISO();
 
   const [{ data: question }, { data: checkpoints }] = await Promise.all([
     supabase.from("questions").select("*").eq("id", id).maybeSingle<Question>(),
@@ -38,62 +42,74 @@ export default async function ProblemDetailPage({
   }
 
   return (
-    <main className="mx-auto w-full max-w-2xl flex-1 p-8">
-      <AppNav title={`${question.leetcode_number}. ${question.title}`} />
+    <>
+      <AppNav />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+        <div className="mb-10">
+          <p className="data mb-1 text-sm text-faint">#{question.leetcode_number}</p>
+          <h1 className="mb-3 text-2xl font-semibold tracking-tight text-balance">
+            {question.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <span className={difficultyClass[question.difficulty]}>{question.difficulty}</span>
+            <span>{question.topic}</span>
+            <span>
+              confidence <span className="data">{question.confidence}/5</span>
+            </span>
+            <span>
+              solved <span className="data">{formatShort(question.date_solved)}</span>
+            </span>
+            <a
+              href={question.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
+            >
+              LeetCode ↗
+            </a>
+          </div>
+        </div>
 
-      <dl className="mb-8 grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-4">
-        <Item label="Difficulty">{question.difficulty}</Item>
-        <Item label="Topic">{question.topic}</Item>
-        <Item label="Confidence">{question.confidence} / 5</Item>
-        <Item label="First solved">{question.date_solved}</Item>
-      </dl>
-
-      <p className="mb-8 text-sm">
-        <a href={question.url} target="_blank" rel="noreferrer" className="underline">
-          Open on LeetCode ↗
-        </a>
-      </p>
-
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-semibold text-gray-500">Review ladder</h2>
-        <CheckpointLadder checkpoints={checkpoints ?? []} />
-      </section>
-
-      {question.notes && (
-        <section className="mb-8">
-          <h2 className="mb-2 text-sm font-semibold text-gray-500">Notes</h2>
-          <p className="whitespace-pre-wrap text-sm">{question.notes}</p>
+        <section className="mb-12 rounded-xl border border-line bg-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h2 className="text-sm font-medium text-muted">Review ladder</h2>
+            <div className="w-36">
+              <LadderRail checkpoints={checkpoints ?? []} today={today} />
+            </div>
+          </div>
+          <CheckpointLadder checkpoints={checkpoints ?? []} />
         </section>
-      )}
 
-      <section className="mb-8">
-        <h2 className="mb-2 text-sm font-semibold text-gray-500">Paper notes</h2>
-        {photoUrl && (
-          // Plain <img>: signed URLs expire, so Next's image optimizer cache would break.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photoUrl}
-            alt={`Handwritten notes for ${question.title}`}
-            className="mb-2 max-w-full rounded-lg border border-gray-200 dark:border-gray-800"
-          />
+        {question.notes && (
+          <section className="mb-12">
+            <h2 className="mb-2 text-sm font-medium text-muted">Notes</h2>
+            <p className="max-w-[65ch] text-sm whitespace-pre-wrap">{question.notes}</p>
+          </section>
         )}
-        <PhotoUpload questionId={question.id} hasPhoto={!!question.photo_path} />
-      </section>
 
-      <p className="text-sm text-gray-500">
-        <Link href="/problems" className="hover:underline">
-          ← All problems
-        </Link>
-      </p>
-    </main>
-  );
-}
+        <section className="mb-12">
+          <h2 className="mb-3 text-sm font-medium text-muted">Paper notes</h2>
+          {photoUrl && (
+            // Plain <img>: signed URLs expire, so Next's image optimizer cache would break.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={photoUrl}
+              alt={`Handwritten notes for ${question.title}`}
+              className="mb-3 max-w-full rounded-xl border border-line"
+            />
+          )}
+          <PhotoUpload questionId={question.id} hasPhoto={!!question.photo_path} />
+        </section>
 
-function Item({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-gray-500">{label}</dt>
-      <dd>{children}</dd>
-    </div>
+        <p className="text-sm">
+          <Link
+            href="/problems"
+            className="text-muted transition-colors duration-150 hover:text-ink"
+          >
+            ← All problems
+          </Link>
+        </p>
+      </main>
+    </>
   );
 }

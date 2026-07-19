@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { daysUntil, formatShort, isActionable, todayISO } from "@/lib/checkpoints";
+import { outcomeClass } from "@/lib/ui";
 import { OUTCOMES, type Checkpoint, type Outcome } from "@/lib/types";
 
 // Vertical stepper for a question's checkpoints. Exactly one rung is ever
@@ -40,16 +41,23 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
         const isLast = i === checkpoints.length - 1;
 
         return (
-          <li key={cp.id} className="flex gap-3">
-            {/* rail: state marker + connector line */}
+          <li key={cp.id} className="flex gap-4">
             <div className="flex flex-col items-center">
               <Marker cp={cp} actionable={actionable} />
-              {!isLast && <div className="w-px flex-1 bg-gray-200 dark:bg-gray-800" />}
+              {!isLast && <div className="w-px flex-1 bg-line" />}
             </div>
 
-            <div className={`flex-1 pb-5 ${cp.status !== "done" && !actionable ? "text-gray-400 dark:text-gray-600" : ""}`}>
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-                <span className={actionable ? "font-semibold" : "font-medium"}>
+            <div className={`min-w-0 flex-1 ${isLast ? "" : "pb-5"}`}>
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
+                <span
+                  className={
+                    cp.status === "done"
+                      ? "font-medium"
+                      : actionable
+                        ? "font-semibold"
+                        : "text-faint"
+                  }
+                >
                   {cp.interval_label}
                   {cp.is_catchup ? "" : " review"}
                 </span>
@@ -57,28 +65,25 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
               </div>
 
               {actionable && confirmingId !== cp.id && (
-                <button
-                  onClick={() => setConfirmingId(cp.id)}
-                  className="mt-2 rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-700 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300"
-                >
+                <button onClick={() => setConfirmingId(cp.id)} className="btn-primary mt-3">
                   Mark reviewed
                 </button>
               )}
 
               {actionable && confirmingId === cp.id && (
-                <div className="mt-2 flex flex-wrap items-center gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {OUTCOMES.map(({ value, label }) => (
                     <button
                       key={value}
                       disabled={busy}
                       onClick={() => complete(cp, value)}
-                      className={`rounded-md px-3 py-1.5 text-sm text-white disabled:opacity-50 ${
+                      className={
                         value === "clean"
-                          ? "bg-green-700 hover:bg-green-600"
+                          ? "btn-primary"
                           : value === "struggled"
-                            ? "bg-amber-600 hover:bg-amber-500"
-                            : "bg-red-700 hover:bg-red-600"
-                      }`}
+                            ? "btn border border-terra/50 text-terra hover:bg-terra/10"
+                            : "btn border border-danger/50 text-danger hover:bg-danger/10"
+                      }
                     >
                       {label}
                     </button>
@@ -86,11 +91,11 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
                   <button
                     onClick={() => setConfirmingId(null)}
                     disabled={busy}
-                    className="text-sm text-gray-500 hover:underline"
+                    className="btn-ghost"
                   >
                     Cancel
                   </button>
-                  {error && <p className="w-full text-sm text-red-600">{error}</p>}
+                  {error && <p className="w-full text-sm text-danger">{error}</p>}
                 </div>
               )}
             </div>
@@ -104,19 +109,42 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
 function Marker({ cp, actionable }: { cp: Checkpoint; actionable: boolean }) {
   if (cp.status === "done") {
     return (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-700 text-xs text-white">
-        ✓
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-olive text-on-olive">
+        <svg aria-hidden width="12" height="12" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M3 8.5 6.5 12 13 4.5"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="sr-only">done</span>
       </span>
     );
   }
   if (actionable) {
     return (
-      <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-gray-900 dark:border-gray-100" />
+      <span className="rail-due flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 border-olive">
+        <span className="h-1.5 w-1.5 rounded-full bg-olive" />
+        <span className="sr-only">due now</span>
+      </span>
     );
   }
+  // scheduled (dated, future) or locked
   return (
-    <span className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 text-xs dark:border-gray-700">
-      🔒
+    <span
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border ${
+        cp.due_date !== null ? "border-line-strong" : "border-line"
+      }`}
+    >
+      {cp.due_date === null && (
+        <svg aria-hidden width="10" height="10" viewBox="0 0 16 16" fill="none" className="text-faint">
+          <rect x="3.25" y="7.25" width="9.5" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      )}
+      <span className="sr-only">{cp.due_date === null ? "locked" : "scheduled"}</span>
     </span>
   );
 }
@@ -124,23 +152,25 @@ function Marker({ cp, actionable }: { cp: Checkpoint; actionable: boolean }) {
 function StatusText({ cp, actionable, today }: { cp: Checkpoint; actionable: boolean; today: string }) {
   if (cp.status === "done") {
     return (
-      <span className="text-gray-500">
-        done {formatShort(cp.completed_date!)} · {cp.outcome}
+      <span className="text-xs text-muted">
+        <span className="data">{formatShort(cp.completed_date!)}</span>
+        <span className="mx-1.5 text-faint">·</span>
+        <span className={outcomeClass[cp.outcome!]}>{cp.outcome}</span>
       </span>
     );
   }
-  // The pending rung is the only one with a date — later dates are unknowable
-  // under completion-anchored scheduling, so we never display them.
+  // Only the pending rung has a date — later dates are unknowable under
+  // completion-anchored scheduling, so we never display them.
   if (cp.due_date !== null) {
     const d = daysUntil(cp.due_date, today);
     if (actionable) {
       return (
-        <span className="text-gray-500">
-          {d === 0 ? "due today" : `${-d} day${d === -1 ? "" : "s"} overdue`}
+        <span className={`data text-xs ${d < 0 ? "text-danger" : "text-olive"}`}>
+          {d === 0 ? "due tonight" : `${-d}d overdue`}
         </span>
       );
     }
-    return <span>due {formatShort(cp.due_date)}</span>;
+    return <span className="data text-xs text-muted">due {formatShort(cp.due_date)}</span>;
   }
-  return <span>unlocks after previous review</span>;
+  return <span className="text-xs text-faint">unlocks after previous review</span>;
 }

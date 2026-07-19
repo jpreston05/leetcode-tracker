@@ -6,9 +6,6 @@ import { createClient } from "@/lib/supabase/client";
 import { todayISO } from "@/lib/checkpoints";
 import { DIFFICULTIES } from "@/lib/types";
 
-const inputClass =
-  "w-full rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-900";
-
 export default function ProblemForm() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -53,70 +50,73 @@ export default function ProblemForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          LeetCode #
-          <input name="leetcode_number" type="number" min={1} required className={inputClass} />
+        <label className="flex flex-col gap-1.5 text-sm text-muted">
+          LeetCode number
+          <input name="leetcode_number" type="number" min={1} required placeholder="1" className="field data" />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-sm text-muted">
           Date solved
-          <input name="date_solved" type="date" defaultValue={todayISO()} required className={inputClass} />
+          <input name="date_solved" type="date" defaultValue={todayISO()} required className="field data" />
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm text-muted">
         Title
-        <input name="title" required placeholder="Two Sum" className={inputClass} />
+        <input name="title" required placeholder="Two Sum" className="field" />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm">
+      <label className="flex flex-col gap-1.5 text-sm text-muted">
         URL
         <input
           name="url"
           type="url"
           required
           placeholder="https://leetcode.com/problems/two-sum/"
-          className={inputClass}
+          className="field"
         />
       </label>
 
-      <div className="grid grid-cols-3 gap-4">
-        <label className="flex flex-col gap-1 text-sm">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <label className="flex flex-col gap-1.5 text-sm text-muted">
           Difficulty
-          <select name="difficulty" required className={inputClass}>
+          <select name="difficulty" required className="field">
             {DIFFICULTIES.map((d) => (
               <option key={d}>{d}</option>
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-sm">
+        <label className="flex flex-col gap-1.5 text-sm text-muted">
           Topic
-          <input name="topic" required placeholder="two-pointers" className={inputClass} />
+          <input name="topic" required placeholder="two-pointers" className="field" />
         </label>
-        <label className="flex flex-col gap-1 text-sm">
-          Confidence (1–5)
-          <select name="confidence" defaultValue="3" required className={inputClass}>
+        <label className="flex flex-col gap-1.5 text-sm text-muted">
+          Confidence
+          <select name="confidence" defaultValue="3" required className="field data">
             {[1, 2, 3, 4, 5].map((n) => (
-              <option key={n}>{n}</option>
+              <option key={n} value={n}>
+                {n} / 5
+              </option>
             ))}
           </select>
         </label>
       </div>
 
-      <label className="flex flex-col gap-1 text-sm">
-        Notes (optional)
-        <textarea name="notes" rows={4} className={inputClass} />
+      <label className="flex flex-col gap-1.5 text-sm text-muted">
+        Notes <span className="text-faint">(optional)</span>
+        <textarea
+          name="notes"
+          rows={4}
+          placeholder="Key insight, pattern, the thing future-you forgets…"
+          className="field resize-y"
+        />
       </label>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={saving}
-        className="self-start rounded-lg bg-gray-900 px-5 py-2 text-sm text-white hover:bg-gray-700 disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-300"
-      >
-        {saving ? "Saving…" : "Add problem"}
+      <button type="submit" disabled={saving} className="btn-primary self-start">
+        {saving ? "Saving…" : "Add to logbook"}
       </button>
     </form>
   );

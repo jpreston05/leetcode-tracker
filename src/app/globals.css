@@ -1,26 +1,124 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Evening Logbook — design tokens
+   Committed dark theme for lamp-lit review sessions.
+   Anchor hue: olive (110-115°). Strategy: restrained.
+   ============================================================ */
+
+@theme {
+  /* neutrals — near-black base, surfaces faintly olive-tinted */
+  --color-base: oklch(0.125 0 0);
+  --color-surface: oklch(0.17 0.005 110);
+  --color-raised: oklch(0.21 0.007 110);
+  --color-line: oklch(0.28 0.008 110);
+  --color-line-strong: oklch(0.36 0.01 110);
+
+  /* text */
+  --color-ink: oklch(0.93 0.012 110);
+  --color-muted: oklch(0.68 0.018 110);
+  --color-faint: oklch(0.58 0.014 110);
+
+  /* brand */
+  --color-olive: oklch(0.74 0.13 115);
+  --color-olive-bright: oklch(0.79 0.135 115);
+  --color-on-olive: oklch(0.15 0.02 115);
+
+  /* semantic */
+  --color-terra: oklch(0.68 0.12 50);
+  --color-danger: oklch(0.64 0.16 27);
+
+  /* heatmap ramp: raised → olive */
+  --color-heat1: oklch(0.32 0.06 115);
+  --color-heat2: oklch(0.46 0.09 115);
+  --color-heat3: oklch(0.6 0.115 115);
+  --color-heat4: oklch(0.74 0.13 115);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-base);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  /* light-on-dark compensation: slightly taller lines, a touch of tracking */
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-olive);
+  color: var(--color-on-olive);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-olive);
+  outline-offset: 2px;
+}
+
+/* ---------- component vocabulary ---------- */
+
+@layer components {
+  /* shared button chassis; modifier classes add color */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply bg-olive text-on-olive hover:bg-olive-bright;
+  }
+  .btn-secondary {
+    @apply border border-line bg-surface text-ink hover:border-line-strong hover:bg-raised;
+  }
+  .btn-ghost {
+    @apply px-2 text-muted hover:bg-surface hover:text-ink;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink transition-colors duration-150 placeholder:text-muted hover:border-line-strong focus:border-olive focus:outline-none;
+  }
+
+  /* aligned digits everywhere data lines up */
+  .data {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+}
+
+/* the one animation with a personality: the due rung breathing */
+@keyframes rail-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.74 0.13 115 / 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 4px oklch(0.74 0.13 115 / 0);
+  }
+}
+
+.rail-due {
+  animation: rail-breathe 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rail-due {
+    animation: none;
+    box-shadow: 0 0 0 2px oklch(0.74 0.13 115 / 0.35);
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
