@@ -1,0 +1,26 @@
+# Supabase free-tier projects pause after 7 days without external requests.
+# This pings the REST API every 3 days so the project stays awake.
+# RLS means the unauthenticated query returns zero rows — the request itself
+# is what counts as activity.
+name: Keep Supabase warm
+
+on:
+  schedule:
+    - cron: "0 6 */3 * *" # 06:00 UTC every 3rd day
+  workflow_dispatch: {} # manual trigger for testing
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" \
+            "${SUPABASE_URL}/rest/v1/questions?select=id&limit=1" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")
+          echo "Supabase responded with HTTP ${status}"
+          [ "${status}" = "200" ]
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
