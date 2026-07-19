@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppNav from "@/components/AppNav";
+import ReviewDialog from "@/components/ReviewDialog";
 import { createClient } from "@/lib/supabase/server";
 import { INTERVALS_DAYS } from "@/lib/leitner";
 import { OUTCOMES, type Question, type Review } from "@/lib/types";
@@ -54,6 +55,10 @@ export default async function ProblemDetailPage({
           <p className="whitespace-pre-wrap text-sm">{question.notes}</p>
         </section>
       )}
+
+      <div className="mb-8">
+        <ReviewDialog questionId={question.id} currentBox={question.leitner_box} />
+      </div>
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-gray-500">Review history</h2>
