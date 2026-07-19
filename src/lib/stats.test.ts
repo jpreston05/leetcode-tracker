@@ -6,6 +6,7 @@ import {
   maxActivityDay,
   quoteIndexFor,
   topicCoverage,
+  topicCoverageWithQuality,
   weekLoad,
 } from "./stats";
 import type { Difficulty, Outcome } from "./types";
@@ -42,6 +43,26 @@ describe("topicCoverage", () => {
       { topic: "dp", count: 2 },
       { topic: "graphs", count: 2 },
       { topic: "arrays", count: 1 },
+    ]);
+  });
+});
+
+describe("topicCoverageWithQuality", () => {
+  it("attaches per-topic review quality, null when unreviewed", () => {
+    const questions = [
+      { id: "q1", topic: "dp" },
+      { id: "q2", topic: "DP" },
+      { id: "q3", topic: "graphs" },
+    ];
+    const done = [
+      { question_id: "q1", outcome: "clean" as const },
+      { question_id: "q2", outcome: "failed" as const },
+      { question_id: "q1", outcome: "clean" as const },
+    ];
+    const rows = topicCoverageWithQuality(questions, done);
+    expect(rows).toEqual([
+      { topic: "dp", count: 2, reviews: 3, cleanPct: 67 },
+      { topic: "graphs", count: 1, reviews: 0, cleanPct: null },
     ]);
   });
 });

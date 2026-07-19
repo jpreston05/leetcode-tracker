@@ -51,6 +51,20 @@ to confirm a 200.
    Authentication → URL Configuration → set Site URL to your Vercel URL and add
    `https://YOUR-APP.vercel.app/auth/callback` to Redirect URLs.
 
+## v4 upgrade: photos, undo, reminders
+
+1. **Schema**: run [`supabase/v4-photos-undo.sql`](supabase/v4-photos-undo.sql)
+   once in the SQL editor (after v2). Adds multi-photo support (`note_photos`)
+   and the same-day `undo_checkpoint` function.
+2. **Daily email reminder** (`.github/workflows/daily-reminder.yml`, 5pm NZ,
+   sends only when reviews are due). Add repo secrets:
+   - `SUPABASE_SECRET_KEY` — Project Settings → API → **secret key**
+     (`sb_secret_…`). Service-role: it bypasses RLS to count due rows, which is
+     why it lives only in GitHub's secret store, never in the app.
+   - `RESEND_API_KEY` — free account at [resend.com](https://resend.com) → API key.
+   - `REMINDER_EMAIL` — where to send it.
+   Then Actions → "Daily review reminder" → Run workflow to test.
+
 ## How review scheduling works (v2: checkpoint ladders)
 
 Every problem gets a 7-rung ladder: 1 day → 3 days → 1 week → 2 weeks →

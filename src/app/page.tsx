@@ -15,7 +15,7 @@ import {
   graduatedCount,
   maxActivityDay,
   quoteIndexFor,
-  topicCoverage,
+  topicCoverageWithQuality,
   weekLoad,
   type DayActivity,
 } from "@/lib/stats";
@@ -61,8 +61,8 @@ export default async function HomePage() {
   );
   const planDay = firstSolve ? daysUntil(today, firstSolve) + 1 : null;
   const split = difficultySplit(questions);
-  const topics = topicCoverage(questions);
   const done = checkpoints.filter((c) => c.status === "done");
+  const topics = topicCoverageWithQuality(questions, done);
   const load = weekLoad(agenda, today);
   const record = maxActivityDay(activity);
 

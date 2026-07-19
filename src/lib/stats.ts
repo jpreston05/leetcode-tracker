@@ -27,17 +27,51 @@ export function difficultySplit(questions: Pick<Question, "difficulty">[]): Diff
   };
 }
 
+const normalizeTopic = (topic: string) => topic.trim().toLowerCase();
+
 /** Topics ranked by count (case/whitespace-normalized), desc then alpha. */
 export function topicCoverage(questions: Pick<Question, "topic">[]): { topic: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const q of questions) {
-    const topic = q.topic.trim().toLowerCase();
+    const topic = normalizeTopic(q.topic);
     if (!topic) continue;
     counts.set(topic, (counts.get(topic) ?? 0) + 1);
   }
   return [...counts.entries()]
     .map(([topic, count]) => ({ topic, count }))
     .sort((a, b) => b.count - a.count || a.topic.localeCompare(b.topic));
+}
+
+export interface TopicRow {
+  topic: string;
+  count: number;
+  reviews: number;
+  cleanPct: number | null; // null until the topic has a completed review
+}
+
+/** topicCoverage + per-topic review quality: which topics you log vs which you fail. */
+export function topicCoverageWithQuality(
+  questions: Pick<Question, "id" | "topic">[],
+  done: Pick<Checkpoint, "question_id" | "outcome">[]
+): TopicRow[] {
+  const topicById = new Map(questions.map((q) => [q.id, normalizeTopic(q.topic)]));
+  const quality = new Map<string, { reviews: number; clean: number }>();
+  for (const d of done) {
+    const topic = topicById.get(d.question_id);
+    if (!topic) continue;
+    const entry = quality.get(topic) ?? { reviews: 0, clean: 0 };
+    entry.reviews++;
+    if (d.outcome === "clean") entry.clean++;
+    quality.set(topic, entry);
+  }
+  return topicCoverage(questions).map((row) => {
+    const entry = quality.get(row.topic);
+    return {
+      ...row,
+      reviews: entry?.reviews ?? 0,
+      cleanPct: entry ? Math.round((entry.clean / entry.reviews) * 100) : null,
+    };
+  });
 }
 
 /** % of completed reviews that were clean; null when nothing is completed. */

@@ -5,14 +5,9 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { compressPhoto } from "@/lib/images";
 
-interface Props {
-  questionId: string;
-  hasPhoto: boolean;
-}
-
-// Select a photo -> compress client-side -> upload to the private
-// note-photos bucket at {user_id}/{question_id}.jpg -> save the path.
-export default function PhotoUpload({ questionId, hasPhoto }: Props) {
+// Select a photo -> compress client-side -> upload to the private note-photos
+// bucket at {user_id}/{question_id}/{uuid}.jpg -> record it in note_photos.
+export default function PhotoUpload({ questionId }: { questionId: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,18 +26,17 @@ export default function PhotoUpload({ questionId, hasPhoto }: Props) {
       if (!user) throw new Error("Not signed in");
 
       const compressed = await compressPhoto(file);
-      const path = `${user.id}/${questionId}.jpg`;
+      const path = `${user.id}/${questionId}/${crypto.randomUUID()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("note-photos")
-        .upload(path, compressed, { contentType: "image/jpeg", upsert: true });
+        .upload(path, compressed, { contentType: "image/jpeg" });
       if (uploadError) throw uploadError;
 
-      const { error: updateError } = await supabase
-        .from("questions")
-        .update({ photo_path: path })
-        .eq("id", questionId);
-      if (updateError) throw updateError;
+      const { error: insertError } = await supabase
+        .from("note_photos")
+        .insert({ question_id: questionId, path });
+      if (insertError) throw insertError;
 
       router.refresh();
     } catch (err) {
@@ -60,7 +54,7 @@ export default function PhotoUpload({ questionId, hasPhoto }: Props) {
           <circle cx="8" cy="8.5" r="2.25" stroke="currentColor" strokeWidth="1.5" />
           <path d="M5.5 3.5 6.5 2h3l1 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
         </svg>
-        {busy ? "Uploading…" : hasPhoto ? "Replace photo" : "Attach photo"}
+        {busy ? "Uploading…" : "Add photo"}
         <input
           type="file"
           accept="image/*"

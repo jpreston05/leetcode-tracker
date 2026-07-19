@@ -20,7 +20,14 @@ export interface Question {
   confidence: number; // 1-5
   date_solved: string; // YYYY-MM-DD
   notes: string | null;
-  photo_path: string | null;
+  created_at: string;
+}
+
+// Mirrors public.note_photos: many photos per question.
+export interface NotePhoto {
+  id: string;
+  question_id: string;
+  path: string; // storage object path in the note-photos bucket
   created_at: string;
 }
 

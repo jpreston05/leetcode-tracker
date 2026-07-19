@@ -34,6 +34,17 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
     router.refresh();
   }
 
+  // Mis-tap safety net: today's completion can be reverted (the DB function
+  // re-locks whatever it unlocked and clears the outcome).
+  async function undo(cp: Checkpoint) {
+    setBusy(true);
+    setError(null);
+    const { error } = await createClient().rpc("undo_checkpoint", { p_id: cp.id });
+    if (error) setError(error.message);
+    setBusy(false);
+    router.refresh();
+  }
+
   return (
     <ol className="flex flex-col">
       {checkpoints.map((cp, i) => {
@@ -62,6 +73,15 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
                   {cp.is_catchup ? "" : " review"}
                 </span>
                 <StatusText cp={cp} actionable={actionable} today={today} />
+                {cp.status === "done" && cp.completed_date === today && (
+                  <button
+                    onClick={() => undo(cp)}
+                    disabled={busy}
+                    className="text-xs text-faint underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
+                  >
+                    Undo
+                  </button>
+                )}
               </div>
 
               {actionable && confirmingId !== cp.id && (

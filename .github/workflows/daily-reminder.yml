@@ -1,0 +1,54 @@
+# Evening review reminder: counts what's due (NZ time) and emails via Resend —
+# but only on days when something is actually due. Silence is a feature.
+#
+# Required repository secrets:
+#   SUPABASE_URL         https://<ref>.supabase.co   (same as keep-warm)
+#   SUPABASE_SECRET_KEY  sb_secret_... (service role: bypasses RLS to count rows;
+#                        used ONLY here, never in the app)
+#   RESEND_API_KEY       from resend.com (free tier)
+#   REMINDER_EMAIL       where to send it
+name: Daily review reminder
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # 05:00 UTC = 17:00 NZST / 18:00 NZDT
+  workflow_dispatch: {} # manual trigger for testing
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Count due reviews
+        id: due
+        run: |
+          TODAY=$(TZ=Pacific/Auckland date +%F)
+          curl -sf -o /dev/null -D headers.txt \
+            "${SUPABASE_URL}/rest/v1/checkpoints?select=id&status=neq.done&due_date=lte.${TODAY}" \
+            -H "apikey: ${SUPABASE_SECRET_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}" \
+            -H "Prefer: count=exact" -H "Range: 0-0"
+          count=$(grep -i '^content-range' headers.txt | sed 's:.*/::' | tr -d '[:space:]')
+          echo "Due today (${TODAY}): ${count}"
+          echo "count=${count}" >> "$GITHUB_OUTPUT"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+
+      - name: Send reminder email
+        if: steps.due.outputs.count != '0' && steps.due.outputs.count != '*'
+        run: |
+          n="${{ steps.due.outputs.count }}"
+          plural=$([ "$n" = "1" ] && echo "review" || echo "reviews")
+          curl -sf https://api.resend.com/emails \
+            -H "Authorization: Bearer ${RESEND_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"LeetCode Tracker <onboarding@resend.dev>\",
+              \"to\": [\"${REMINDER_EMAIL}\"],
+              \"subject\": \"${n} ${plural} due tonight\",
+              \"text\": \"${n} ${plural} in the queue. Every rung climbed is a step closer to Sydney.\"
+            }"
+          echo "Reminder sent (${n} due)."
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          REMINDER_EMAIL: ${{ secrets.REMINDER_EMAIL }}
