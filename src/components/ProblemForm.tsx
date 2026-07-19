@@ -24,18 +24,22 @@ export default function ProblemForm() {
     // Noon local time keeps the date stable across timezones/DST.
     const { box, nextReviewDate } = scheduleNewProblem(new Date(`${dateSolved}T12:00:00`));
 
-    const { error } = await createClient().from("questions").insert({
-      leetcode_number: Number(form.get("leetcode_number")),
-      title: form.get("title"),
-      url: form.get("url"),
-      difficulty: form.get("difficulty"),
-      topic: form.get("topic"),
-      confidence: Number(form.get("confidence")),
-      date_solved: dateSolved,
-      leitner_box: box,
-      next_review_date: nextReviewDate,
-      notes: (form.get("notes") as string) || null,
-    });
+    const { data, error } = await createClient()
+      .from("questions")
+      .insert({
+        leetcode_number: Number(form.get("leetcode_number")),
+        title: form.get("title"),
+        url: form.get("url"),
+        difficulty: form.get("difficulty"),
+        topic: form.get("topic"),
+        confidence: Number(form.get("confidence")),
+        date_solved: dateSolved,
+        leitner_box: box,
+        next_review_date: nextReviewDate,
+        notes: (form.get("notes") as string) || null,
+      })
+      .select("id")
+      .single();
 
     if (error) {
       setError(
@@ -47,7 +51,8 @@ export default function ProblemForm() {
       return;
     }
 
-    router.push("/problems");
+    // Land on the new problem's page so its notes photo can be attached immediately.
+    router.push(`/problems/${data.id}`);
     router.refresh();
   }
 
