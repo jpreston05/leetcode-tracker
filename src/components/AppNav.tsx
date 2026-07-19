@@ -8,7 +8,7 @@ export default function AppNav({ title }: { title: string }) {
         <h1 className="text-xl font-semibold">{title}</h1>
         <nav className="flex gap-4 text-sm text-gray-500">
           <Link href="/" className="hover:underline">
-            Due today
+            Dashboard
           </Link>
           <Link href="/problems" className="hover:underline">
             All problems
