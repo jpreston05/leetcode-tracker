@@ -7,7 +7,7 @@ import TopicCoverage from "@/components/TopicCoverage";
 import UpcomingAgenda, { type AgendaRow } from "@/components/UpcomingAgenda";
 import WeekLoadStrip from "@/components/WeekLoadStrip";
 import { createClient } from "@/lib/supabase/server";
-import { todayISO } from "@/lib/checkpoints";
+import { daysUntil, todayISO } from "@/lib/checkpoints";
 import { QUOTES } from "@/lib/quotes";
 import {
   cleanRate,
@@ -37,8 +37,8 @@ export default async function HomePage() {
       .overrideTypes<AgendaRow[]>(),
     supabase
       .from("questions")
-      .select("id, difficulty, topic")
-      .overrideTypes<Pick<Question, "id" | "difficulty" | "topic">[]>(),
+      .select("id, difficulty, topic, date_solved")
+      .overrideTypes<Pick<Question, "id" | "difficulty" | "topic" | "date_solved">[]>(),
     supabase
       .from("checkpoints")
       .select("question_id, is_catchup, status, outcome")
@@ -54,6 +54,12 @@ export default async function HomePage() {
 
   const dueCount = agenda.filter((r) => r.due_date! <= today).length;
   const quote = QUOTES[quoteIndexFor(today, QUOTES.length)];
+  // "Day N" of the plan, counted from the earliest logged solve.
+  const firstSolve = questions.reduce<string | null>(
+    (min, q) => (min === null || q.date_solved < min ? q.date_solved : min),
+    null
+  );
+  const planDay = firstSolve ? daysUntil(today, firstSolve) + 1 : null;
   const split = difficultySplit(questions);
   const topics = topicCoverage(questions);
   const done = checkpoints.filter((c) => c.status === "done");
@@ -77,8 +83,14 @@ export default async function HomePage() {
               ? "All clear tonight"
               : `${dueCount} review${dueCount === 1 ? "" : "s"} due`}
           </h1>
-          <p className="mt-2 max-w-[55ch] text-sm text-muted">{quote}</p>
         </div>
+
+        <section className="mb-10 rounded-xl border border-line bg-surface px-6 py-5">
+          <p className="max-w-[40ch] text-lg font-medium tracking-tight text-balance">{quote}</p>
+          <p className="data mt-3 text-xs text-faint">
+            the Sydney plan{planDay !== null ? ` · day ${planDay}` : ""}
+          </p>
+        </section>
 
         {error && <p className="mb-8 text-sm text-danger">{error.message}</p>}
 
