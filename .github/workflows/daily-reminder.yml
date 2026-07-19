@@ -38,12 +38,30 @@ jobs:
         run: |
           n="${{ steps.due.outputs.count }}"
           plural=$([ "$n" = "1" ] && echo "review" || echo "reviews")
+          # Rotate the closing line and date the subject: identical trailing
+          # text in a same-subject thread is exactly what Gmail collapses as
+          # "quoted text". Keep this list in sync with src/lib/quotes.ts.
+          QUOTES=(
+            "Every rung climbed is a step closer to Sydney."
+            "Six months of steady beats six weeks of cramming."
+            "You're building the engineer that Sydney offer letter goes to."
+            "Today's review is tomorrow's calm interview."
+            "Consistency is the whole trick. Show up tonight."
+            "The harbour view is rented with nights like this."
+            "Forgetting is human. Reviewing is the edge."
+            "One problem re-solved beats three half-remembered."
+            "Future you, in Sydney, is grateful for tonight."
+            "Slow is smooth, smooth is fast — keep climbing."
+          )
+          doy=$(TZ=Pacific/Auckland date +%j)
+          quote="${QUOTES[$((10#$doy % ${#QUOTES[@]}))]}"
+          nice_date=$(TZ=Pacific/Auckland date '+%a %d %b')
           # one <li> per due problem: linked title + which review it is
           items=$(jq -r '.[] | "<li style=\"margin:0 0 6px\"><a href=\"\(.questions.url)\">\(.questions.leetcode_number|tostring). \(.questions.title | @html)</a> — \(.interval_label)\(if .is_catchup then "" else " review" end)</li>"' rows.json)
           payload=$(jq -n \
             --arg to "$REMINDER_EMAIL" \
-            --arg subject "${n} ${plural} due tonight" \
-            --arg html "<p>${n} ${plural} in the queue:</p><ul style=\"padding-left:20px\">${items}</ul><p>Every rung climbed is a step closer to Sydney.</p>" \
+            --arg subject "${n} ${plural} due tonight · ${nice_date}" \
+            --arg html "<p>${n} ${plural} in the queue:</p><ul style=\"padding-left:20px\">${items}</ul><p>${quote}</p>" \
             '{from: "LeetCode Tracker <onboarding@resend.dev>", to: [$to], subject: $subject, html: $html}')
           curl -sf https://api.resend.com/emails \
             -H "Authorization: Bearer ${RESEND_API_KEY}" \
