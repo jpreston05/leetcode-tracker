@@ -31,6 +31,26 @@ npm install
 npm run dev   # http://localhost:3000
 ```
 
+## Keep-warm (do this once the repo is on GitHub)
+
+Supabase free projects pause after 7 idle days. `.github/workflows/keep-warm.yml`
+pings the REST API every 3 days to prevent that. Add two **repository secrets**
+(GitHub → repo → Settings → Secrets and variables → Actions):
+
+- `SUPABASE_URL` — e.g. `https://YOUR-PROJECT-REF.supabase.co`
+- `SUPABASE_ANON_KEY` — the anon key (public by design, but a secret keeps it out of logs)
+
+Then run the workflow once by hand (Actions → Keep Supabase warm → Run workflow)
+to confirm a 200.
+
+## Deploy (Vercel)
+
+1. [vercel.com](https://vercel.com) → Add New Project → import this repo (defaults are fine).
+2. Add the two env vars from `.env.example` in Project Settings → Environment Variables.
+3. After the first deploy, tell Supabase about the prod URL:
+   Authentication → URL Configuration → set Site URL to your Vercel URL and add
+   `https://YOUR-APP.vercel.app/auth/callback` to Redirect URLs.
+
 ## How review scheduling works
 
 Every problem sits in a Leitner box 1–5 with intervals 1 / 3 / 7 / 14 / 30 days.
