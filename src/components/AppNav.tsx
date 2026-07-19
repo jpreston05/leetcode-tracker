@@ -1,7 +1,6 @@
 import Link from "next/link";
 import SignOutButton from "./SignOutButton";
 
-// Header nav shared by all authed pages.
 export default function AppNav({ title }: { title: string }) {
   return (
     <header className="mb-8 flex items-center justify-between">

@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/leitner";
 import type { Question } from "@/lib/types";
 
-// Landing page: everything due today or overdue, oldest first.
 export default async function HomePage() {
   const supabase = await createClient();
   const { data: due, error } = await supabase
