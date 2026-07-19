@@ -1,5 +1,6 @@
 export type Difficulty = "Easy" | "Medium" | "Hard";
 export type Outcome = "clean" | "struggled" | "failed";
+export type CheckpointStatus = "locked" | "available" | "done";
 
 export const DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
 export const OUTCOMES: { value: Outcome; label: string }[] = [
@@ -18,19 +19,24 @@ export interface Question {
   topic: string;
   confidence: number; // 1-5
   date_solved: string; // YYYY-MM-DD
-  leitner_box: number; // 1-5
-  next_review_date: string; // YYYY-MM-DD
   notes: string | null;
   photo_path: string | null;
   created_at: string;
 }
 
-// Mirrors public.reviews
-export interface Review {
+// Mirrors public.checkpoints: one scheduled review of one question.
+// Ladder rungs (sequence 1-7) are pre-created; catch-up rows share their
+// rung's sequence with is_catchup = true.
+export interface Checkpoint {
   id: string;
   question_id: string;
-  reviewed_on: string; // YYYY-MM-DD
-  outcome: Outcome;
-  time_taken_minutes: number | null;
+  sequence: number; // 1-7
+  is_catchup: boolean;
+  interval_days: number;
+  interval_label: string;
+  due_date: string | null; // null while locked (unknown until predecessor completes)
+  status: CheckpointStatus;
+  completed_date: string | null;
+  outcome: Outcome | null;
   created_at: string;
 }
