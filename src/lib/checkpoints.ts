@@ -1,17 +1,5 @@
 import type { Checkpoint } from "./types";
 
-// UI mirror of the ladder defined in supabase/v2-checkpoints.sql (the trigger
-// is the source of truth — this is only for rendering rungs and tests).
-export const LADDER = [
-  { sequence: 1, days: 1, label: "1 day" },
-  { sequence: 2, days: 3, label: "3 days" },
-  { sequence: 3, days: 7, label: "1 week" },
-  { sequence: 4, days: 14, label: "2 weeks" },
-  { sequence: 5, days: 30, label: "1 month" },
-  { sequence: 6, days: 90, label: "3 months" },
-  { sequence: 7, days: 180, label: "6 months" },
-] as const;
-
 /** YYYY-MM-DD from a Date's local components (avoids UTC off-by-one). */
 export function toISODate(date: Date): string {
   const y = date.getFullYear();

@@ -8,12 +8,22 @@ export default function PhotoRemoveButton({ photoId, path }: { photoId: string; 
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function remove() {
     setBusy(true);
+    setError(null);
     const supabase = createClient();
-    await supabase.storage.from("note-photos").remove([path]);
-    await supabase.from("note_photos").delete().eq("id", photoId);
+    const { error: storageError } = await supabase.storage.from("note-photos").remove([path]);
+    const { error: rowError } = storageError
+      ? { error: null }
+      : await supabase.from("note_photos").delete().eq("id", photoId);
+    const failure = storageError ?? rowError;
+    if (failure) {
+      setError(failure.message);
+      setBusy(false);
+      return;
+    }
     router.refresh();
   }
 
@@ -39,6 +49,7 @@ export default function PhotoRemoveButton({ photoId, path }: { photoId: string; 
       <button onClick={() => setConfirming(false)} disabled={busy} className="text-muted hover:text-ink">
         Cancel
       </button>
+      {error && <span className="text-danger">{error}</span>}
     </span>
   );
 }

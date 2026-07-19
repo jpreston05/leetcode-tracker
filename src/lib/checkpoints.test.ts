@@ -1,19 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  LADDER,
-  addDaysISO,
-  bucketFor,
-  computeStreaks,
-  daysUntil,
-} from "./checkpoints";
+import { addDaysISO, bucketFor, computeStreaks, daysUntil } from "./checkpoints";
 
 const TODAY = "2026-07-20";
-
-describe("LADDER", () => {
-  it("mirrors the SQL ladder", () => {
-    expect(LADDER.map((r) => r.days)).toEqual([1, 3, 7, 14, 30, 90, 180]);
-  });
-});
 
 describe("daysUntil", () => {
   it("handles same day, future, past, and month boundaries", () => {
