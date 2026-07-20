@@ -51,8 +51,10 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 ## Ops
 
 - GitHub Actions: `keep-warm.yml` (Supabase free tier pauses after 7 idle
-  days) and `daily-reminder.yml` (5pm NZ, Resend email every day: due problems
-  grouped by review interval, or a "solve something new" nudge on clear days). Secrets live in GitHub repo settings, NOT in the app
+  days) and `daily-reminder.yml` (12pm NZ, Resend email every day: due
+  problems grouped by review interval, a "solve something new" nudge on clear
+  days, or a "nice work" note if today's due items are already done).
+  Secrets live in GitHub repo settings, NOT in the app
   or Vercel: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`,
   `RESEND_API_KEY`, `REMINDER_EMAIL`. Scheduled workflows only run from
   `main`. The reminder's quote list mirrors `src/lib/quotes.ts` — keep in sync.
