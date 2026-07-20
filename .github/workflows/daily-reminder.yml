@@ -1,6 +1,6 @@
-# Evening review reminder: emails via Resend every day (NZ time). Due problems
+# Daily review reminder: emails via Resend every day (NZ time). Due problems
 # are grouped by which review they are; on clear days it nudges toward solving
-# something new instead.
+# something new instead, unless today's tasks are already done.
 #
 # Required repository secrets:
 #   SUPABASE_URL         https://<ref>.supabase.co   (same as keep-warm)
@@ -12,7 +12,10 @@ name: Daily review reminder
 
 on:
   schedule:
-    - cron: "0 5 * * *" # 05:00 UTC = 17:00 NZST / 18:00 NZDT
+    # Off-the-hour minute deliberately: GitHub queues scheduled workflows and
+    # :00 is the most congested slot, which is likely why the old 05:00 UTC
+    # run was landing closer to 08:00 UTC in practice.
+    - cron: "7 0 * * *" # ~00:07 UTC = ~12:07 NZST / ~13:07 NZDT
   workflow_dispatch: {} # manual trigger for testing
 
 jobs:
@@ -31,6 +34,17 @@ jobs:
           echo "Due today (${TODAY}): ${count}"
           echo "count=${count}" >> "$GITHUB_OUTPUT"
           echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
+
+          # activity_daily is solved-or-reviewed counts for the day, so this
+          # tells us whether the zero-due case is "nothing was ever due" or
+          # "due items got knocked out earlier today".
+          curl -sf -o activity.json \
+            "${SUPABASE_URL}/rest/v1/activity_daily?day=eq.${TODAY}&select=total" \
+            -H "apikey: ${SUPABASE_SECRET_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}"
+          done_today=$(jq '(.[0].total // 0) > 0' activity.json)
+          echo "Activity today (${TODAY}): done_today=${done_today}"
+          echo "done_today=${done_today}" >> "$GITHUB_OUTPUT"
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
@@ -38,6 +52,7 @@ jobs:
       - name: Send reminder email
         run: |
           n="${{ steps.due.outputs.count }}"
+          done_today="${{ steps.due.outputs.done_today }}"
           plural=$([ "$n" = "1" ] && echo "review" || echo "reviews")
           # Rotate the closing line and date the subject: identical trailing
           # text in a same-subject thread is exactly what Gmail collapses as
@@ -47,21 +62,24 @@ jobs:
             "Six months of steady beats six weeks of cramming."
             "You're building the engineer that Sydney offer letter goes to."
             "Today's review is tomorrow's calm interview."
-            "Consistency is the whole trick. Show up tonight."
-            "The harbour view is rented with nights like this."
+            "Consistency is the whole trick. Show up today."
+            "The harbour view is rented with days like this."
             "Forgetting is human. Reviewing is the edge."
             "One problem re-solved beats three half-remembered."
-            "Future you, in Sydney, is grateful for tonight."
+            "Future you, in Sydney, is grateful for today."
             "Slow is smooth, smooth is fast — keep climbing."
           )
           doy=$(TZ=Pacific/Auckland date +%j)
           quote="${QUOTES[$((10#$doy % ${#QUOTES[@]}))]}"
           nice_date=$(TZ=Pacific/Auckland date '+%a %d %b')
-          if [ "$n" = "0" ]; then
-            subject="All clear tonight — solve something new · ${nice_date}"
-            body="<p>Nothing is due tonight — the ladder is clear. Perfect evening to pick up one or two new problems and keep the momentum going.</p>"
+          if [ "$n" = "0" ] && [ "$done_today" = "true" ]; then
+            subject="Nice work — today's tasks are done · ${nice_date}"
+            body="<p>Everything due today is done — nice work. Nothing left on the ladder for today; rest up or get ahead with a new problem if you're keen.</p>"
+          elif [ "$n" = "0" ]; then
+            subject="All clear today — solve something new · ${nice_date}"
+            body="<p>Nothing is due today — the ladder is clear. Good time to pick up one or two new problems and keep the momentum going.</p>"
           else
-            subject="${n} ${plural} due tonight · ${nice_date}"
+            subject="${n} ${plural} due today · ${nice_date}"
             # Sections per review interval (regular reviews first, then
             # catch-ups), each a heading + list of linked problems.
             # "3 days" -> "3-day reviews"; "3-day catch-up" -> "3-day catch-ups".

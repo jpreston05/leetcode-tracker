@@ -28,9 +28,9 @@ Design language lives in [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md)
   1 month → 3 months → 6 months. Completing all seven rungs graduates it.
 - **Same-day undo** — a mis-click on "reviewed" can be reversed until
   midnight (NZ time), nothing after that.
-- **Daily reminder email** — 5pm NZ via GitHub Actions + Resend: due problems
-  grouped by review interval with overdue tags, or a "solve something new"
-  nudge on clear days.
+- **Daily reminder email** — 12pm NZ via GitHub Actions + Resend: due problems
+  grouped by review interval with overdue tags, a "solve something new" nudge
+  on clear days, or a "nice work" note if today's due items are already done.
 
 ## How scheduling works
 
@@ -93,7 +93,7 @@ the app or Vercel.
   pause after 7 idle days; this pings the REST API every 3 days. Needs
   `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon key is public by design,
   but a secret keeps it out of logs).
-- **Daily reminder** (`.github/workflows/daily-reminder.yml`) — the 5pm NZ
+- **Daily reminder** (`.github/workflows/daily-reminder.yml`) — the 12pm NZ
   email described above. Needs:
   - `SUPABASE_SECRET_KEY` — Project Settings → API → **secret key**
     (`sb_secret_…`). Service-role: it bypasses RLS to read due rows, which is
