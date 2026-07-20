@@ -2,17 +2,59 @@
 
 Tracking leetcode problems to hold myself accountable.
 
-A private, single-user app: log solved LeetCode problems, attach photos of
-handwritten notes, and get told what to re-solve today via 5-box Leitner
-spaced repetition.
+A private, single-user app: I log solved LeetCode problems, attach photos of
+my handwritten notes, and get told what to re-solve tonight via a 7-rung
+spaced-repetition ladder. **Signups are disabled — only my GitHub account can
+log in.** The deployed site is a locked door; to run your own copy you'd
+create your own Supabase project and lock it to your own account (steps
+below).
 
-**Stack:** Next.js (App Router, TypeScript) · Supabase (Postgres, Storage, Auth) · Tailwind
+**Stack:** Next.js (App Router, TypeScript) · Supabase (Postgres, Storage,
+Auth) · Tailwind 4 · Vitest
+
+Design language lives in [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md)
+("Evening Logbook": dark-only, OKLCH tokens, plain HTML/CSS charts).
+
+## What it does
+
+- **Dashboard** — tonight's due reviews, this week's load, stats (problems,
+  reviews, clean rate, graduated), difficulty split, topic coverage, and a
+  GitHub-style activity heatmap. A rotating quote keeps the Sydney plan in
+  view.
+- **Problem log** — each solve records difficulty, topic, and notes, with
+  photos of handwritten working stored in a private bucket and served via
+  short-lived signed URLs.
+- **Review ladder** — every problem climbs 1 day → 3 days → 1 week → 2 weeks →
+  1 month → 3 months → 6 months. Completing all seven rungs graduates it.
+- **Same-day undo** — a mis-click on "reviewed" can be reversed until
+  midnight (NZ time), nothing after that.
+- **Daily reminder email** — 5pm NZ via GitHub Actions + Resend: due problems
+  grouped by review interval with overdue tags, or a "solve something new"
+  nudge on clear days.
+
+## How scheduling works
+
+Rungs unlock one at a time, and scheduling is **completion-anchored**:
+finishing rung N today puts rung N+1 at today + its interval, so being late
+never compresses the rest of the schedule. A review that goes badly
+(struggled/failed) inserts a 3-day catch-up before the ladder continues; only
+a clean solve advances.
+
+The lock is enforced in Postgres, not the UI: the `checkpoints` table has no
+write policies, and the only write paths are security-definer functions
+(`complete_checkpoint`, `undo_checkpoint`, and the ladder-generating trigger).
+`complete_checkpoint` rejects anything that isn't the due, unlocked rung.
+All dates are pinned to Pacific/Auckland — "today" means NZ today, whether
+the code runs on my laptop or a UTC Vercel server.
 
 ## One-time Supabase setup
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. **Schema:** open SQL Editor, paste and run [`supabase/schema.sql`](supabase/schema.sql)
-   (creates `questions`, `reviews`, RLS policies, and the private `note-photos` bucket).
+2. **Schema:** open the SQL Editor and run the three files in order —
+   [`supabase/schema.sql`](supabase/schema.sql), then
+   [`supabase/v2-checkpoints.sql`](supabase/v2-checkpoints.sql), then
+   [`supabase/v4-photos-undo.sql`](supabase/v4-photos-undo.sql). (Schema
+   changes are hand-run numbered files, no migration tooling.)
 3. **GitHub OAuth:**
    - GitHub → Settings → Developer settings → OAuth Apps → New OAuth App.
      - Homepage URL: `http://localhost:3000` (add your prod URL later)
@@ -22,26 +64,16 @@ spaced repetition.
    from Project Settings → API.
 5. Run the app, sign in once with your GitHub account, **then** lock the door:
    Supabase → Authentication → Settings → disable **"Allow new users to sign up"**.
-   Your existing user keeps working; nobody else can ever register.
+   Your existing user keeps working; nobody else can ever register. This is
+   what makes the app single-user.
 
 ## Develop
 
 ```bash
 npm install
 npm run dev   # http://localhost:3000
+npm test      # Vitest — pure logic in src/lib/*.test.ts
 ```
-
-## Keep-warm (do this once the repo is on GitHub)
-
-Supabase free projects pause after 7 idle days. `.github/workflows/keep-warm.yml`
-pings the REST API every 3 days to prevent that. Add two **repository secrets**
-(GitHub → repo → Settings → Secrets and variables → Actions):
-
-- `SUPABASE_URL` — e.g. `https://YOUR-PROJECT-REF.supabase.co`
-- `SUPABASE_ANON_KEY` — the anon key (public by design, but a secret keeps it out of logs)
-
-Then run the workflow once by hand (Actions → Keep Supabase warm → Run workflow)
-to confirm a 200.
 
 ## Deploy (Vercel)
 
@@ -51,36 +83,23 @@ to confirm a 200.
    Authentication → URL Configuration → set Site URL to your Vercel URL and add
    `https://YOUR-APP.vercel.app/auth/callback` to Redirect URLs.
 
-## v4 upgrade: photos, undo, reminders
+## GitHub Actions
 
-1. **Schema**: run [`supabase/v4-photos-undo.sql`](supabase/v4-photos-undo.sql)
-   once in the SQL editor (after v2). Adds multi-photo support (`note_photos`)
-   and the same-day `undo_checkpoint` function.
-2. **Daily email reminder** (`.github/workflows/daily-reminder.yml`, 5pm NZ,
-   sends only when reviews are due). Add repo secrets:
-   - `SUPABASE_SECRET_KEY` — Project Settings → API → **secret key**
-     (`sb_secret_…`). Service-role: it bypasses RLS to count due rows, which is
-     why it lives only in GitHub's secret store, never in the app.
-   - `RESEND_API_KEY` — free account at [resend.com](https://resend.com) → API key.
-   - `REMINDER_EMAIL` — where to send it.
-   Then Actions → "Daily review reminder" → Run workflow to test.
+Both workflows run from `main` and read **repository secrets** (GitHub →
+repo → Settings → Secrets and variables → Actions) — nothing here lives in
+the app or Vercel.
 
-## How review scheduling works (v2: checkpoint ladders)
+- **Keep-warm** (`.github/workflows/keep-warm.yml`) — Supabase free projects
+  pause after 7 idle days; this pings the REST API every 3 days. Needs
+  `SUPABASE_URL` and `SUPABASE_ANON_KEY` (the anon key is public by design,
+  but a secret keeps it out of logs).
+- **Daily reminder** (`.github/workflows/daily-reminder.yml`) — the 5pm NZ
+  email described above. Needs:
+  - `SUPABASE_SECRET_KEY` — Project Settings → API → **secret key**
+    (`sb_secret_…`). Service-role: it bypasses RLS to read due rows, which is
+    why it lives only in GitHub's secret store, never in the app.
+  - `RESEND_API_KEY` — free account at [resend.com](https://resend.com) → API key.
+  - `REMINDER_EMAIL` — where to send it.
 
-Every problem gets a 7-rung ladder: 1 day → 3 days → 1 week → 2 weeks →
-1 month → 3 months → 6 months. Rungs unlock one at a time, and scheduling is
-**completion-anchored**: finishing rung N today puts rung N+1 at today + its
-interval, so being late never compresses the rest of the schedule. A review
-that goes badly (struggled/failed) inserts a 3-day catch-up before the ladder
-continues; only a clean solve advances. Completing all 7 rungs graduates the
-problem.
-
-The lock is enforced in Postgres, not the UI: the `checkpoints` table has no
-write policies, and the only write path is the `complete_checkpoint` function,
-which rejects anything that isn't the due, unlocked rung.
-
-**v2 upgrade of an existing v1 project:** run
-[`supabase/v2-checkpoints.sql`](supabase/v2-checkpoints.sql) once in the SQL
-editor (after `schema.sql`). It creates `checkpoints` + the `activity_daily`
-heatmap view, builds ladders for existing questions, and drops the v1
-`reviews` table and Leitner columns.
+After adding secrets, run each workflow once by hand (Actions → Run workflow)
+to confirm it works.
