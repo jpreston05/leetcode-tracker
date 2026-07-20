@@ -1,5 +1,6 @@
-# Evening review reminder: lists what's due (NZ time) and emails via Resend —
-# but only on days when something is actually due. Silence is a feature.
+# Evening review reminder: emails via Resend every day (NZ time). Due problems
+# are grouped by which review they are; on clear days it nudges toward solving
+# something new instead.
 #
 # Required repository secrets:
 #   SUPABASE_URL         https://<ref>.supabase.co   (same as keep-warm)
@@ -23,18 +24,18 @@ jobs:
         run: |
           TODAY=$(TZ=Pacific/Auckland date +%F)
           curl -sf -o rows.json \
-            "${SUPABASE_URL}/rest/v1/checkpoints?select=interval_label,is_catchup,questions(leetcode_number,title,url)&status=neq.done&due_date=lte.${TODAY}&order=due_date" \
+            "${SUPABASE_URL}/rest/v1/checkpoints?select=interval_label,interval_days,is_catchup,due_date,questions(leetcode_number,title,url)&status=neq.done&due_date=lte.${TODAY}&order=due_date" \
             -H "apikey: ${SUPABASE_SECRET_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}"
           count=$(jq length rows.json)
           echo "Due today (${TODAY}): ${count}"
           echo "count=${count}" >> "$GITHUB_OUTPUT"
+          echo "today=${TODAY}" >> "$GITHUB_OUTPUT"
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
 
       - name: Send reminder email
-        if: steps.due.outputs.count != '0'
         run: |
           n="${{ steps.due.outputs.count }}"
           plural=$([ "$n" = "1" ] && echo "review" || echo "reviews")
@@ -56,12 +57,44 @@ jobs:
           doy=$(TZ=Pacific/Auckland date +%j)
           quote="${QUOTES[$((10#$doy % ${#QUOTES[@]}))]}"
           nice_date=$(TZ=Pacific/Auckland date '+%a %d %b')
-          # one <li> per due problem: linked title + which review it is
-          items=$(jq -r '.[] | "<li style=\"margin:0 0 6px\"><a href=\"\(.questions.url)\">\(.questions.leetcode_number|tostring). \(.questions.title | @html)</a> — \(.interval_label)\(if .is_catchup then "" else " review" end)</li>"' rows.json)
+          if [ "$n" = "0" ]; then
+            subject="All clear tonight — solve something new · ${nice_date}"
+            body="<p>Nothing is due tonight — the ladder is clear. Perfect evening to pick up one or two new problems and keep the momentum going.</p>"
+          else
+            subject="${n} ${plural} due tonight · ${nice_date}"
+            # Sections per review interval (regular reviews first, then
+            # catch-ups), each a heading + list of linked problems.
+            # "3 days" -> "3-day reviews"; "3-day catch-up" -> "3-day catch-ups".
+            # Anything older than today gets an "overdue N days" tag.
+            sections=$(jq -r --arg today "${{ steps.due.outputs.today }}" '
+              def days_late:
+                (($today + "T00:00:00Z" | fromdate)
+                 - (.due_date + "T00:00:00Z" | fromdate)) / 86400 | round;
+              group_by([.is_catchup, .interval_days])
+              | map(
+                  "<p style=\"margin:14px 0 4px\"><strong>"
+                  + (if .[0].is_catchup
+                     then (.[0].interval_label | @html) + "s"
+                     else (.[0].interval_label | sub("s$"; "") | gsub(" "; "-") | @html) + " reviews"
+                     end)
+                  + " (" + (length | tostring) + ")</strong></p>"
+                  + "<ul style=\"margin:0;padding-left:20px\">"
+                  + (map(
+                      "<li style=\"margin:0 0 6px\"><a href=\"\(.questions.url)\">\(.questions.leetcode_number|tostring). \(.questions.title | @html)</a>"
+                      + (if .due_date < $today
+                         then " — <strong>overdue \(days_late) day\(if days_late == 1 then "" else "s" end)</strong>"
+                         else "" end)
+                      + "</li>"
+                    ) | join(""))
+                  + "</ul>"
+                )
+              | join("")' rows.json)
+            body="<p>${n} ${plural} in the queue:</p>${sections}"
+          fi
           payload=$(jq -n \
             --arg to "$REMINDER_EMAIL" \
-            --arg subject "${n} ${plural} due tonight · ${nice_date}" \
-            --arg html "<p>${n} ${plural} in the queue:</p><ul style=\"padding-left:20px\">${items}</ul><p>${quote}</p>" \
+            --arg subject "$subject" \
+            --arg html "<p>Good afternoon Jack,</p>${body}<p>${quote}</p>" \
             '{from: "LeetCode Tracker <onboarding@resend.dev>", to: [$to], subject: $subject, html: $html}')
           curl -sf https://api.resend.com/emails \
             -H "Authorization: Bearer ${RESEND_API_KEY}" \
