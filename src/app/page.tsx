@@ -2,6 +2,7 @@ import Link from "next/link";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import AppNav from "@/components/AppNav";
 import DifficultySplitBar from "@/components/DifficultySplitBar";
+import PortfolioHero from "@/components/PortfolioHero";
 import StatsRow from "@/components/StatsRow";
 import TopicCoverage from "@/components/TopicCoverage";
 import UpcomingAgenda, { type AgendaRow } from "@/components/UpcomingAgenda";
@@ -19,12 +20,20 @@ import {
   weekLoad,
   type DayActivity,
 } from "@/lib/stats";
-import type { Checkpoint, Question } from "@/lib/types";
+import type { Checkpoint, PublicCheckpoint, PublicQuestion, Question } from "@/lib/types";
 
 type StatCheckpoint = Pick<Checkpoint, "question_id" | "is_catchup" | "status" | "outcome">;
 
 export default async function HomePage() {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Recruiters (and anyone else) land on the read-only portfolio; only the
+  // owner sees the operational dashboard.
+  if (!user) return <PublicHome />;
+
   const today = todayISO();
 
   const [agendaRes, questionsRes, checkpointsRes, activityRes] = await Promise.all([
@@ -68,7 +77,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <AppNav />
+      <AppNav isOwner />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-10">
           <p className="data mb-1 text-sm text-faint">
@@ -118,6 +127,73 @@ export default async function HomePage() {
 
         <section className="mt-14">
           <h2 className="mb-4 text-sm font-medium text-muted">Stats</h2>
+          <StatsRow
+            mostInDay={record?.total ?? null}
+            problems={questions.length}
+            reviews={done.length}
+            cleanRate={cleanRate(done)}
+            graduated={graduatedCount(checkpoints)}
+          />
+          {split.total > 0 && (
+            <div className="mt-8">
+              <DifficultySplitBar split={split} />
+            </div>
+          )}
+          {topics.length > 0 && (
+            <div className="mt-8">
+              <h3 className="mb-3 text-xs text-faint">Topics</h3>
+              <TopicCoverage topics={topics} />
+            </div>
+          )}
+        </section>
+
+        <section className="mt-14">
+          <h2 className="mb-4 text-sm font-medium text-muted">Activity</h2>
+          <ActivityHeatmap rows={activity} today={today} />
+        </section>
+      </main>
+    </>
+  );
+}
+
+// Public portfolio home: progress + coverage + activity, drawn from the
+// anon-readable public_* views. No quote, no agenda, no schedule.
+async function PublicHome() {
+  const supabase = await createClient();
+  const today = todayISO();
+
+  const [questionsRes, checkpointsRes, activityRes] = await Promise.all([
+    supabase
+      .from("public_questions")
+      .select("id, difficulty, topic")
+      .overrideTypes<Pick<PublicQuestion, "id" | "difficulty" | "topic">[]>(),
+    supabase
+      .from("public_checkpoints")
+      .select("question_id, is_catchup, status, outcome")
+      .overrideTypes<Pick<PublicCheckpoint, "question_id" | "is_catchup" | "status" | "outcome">[]>(),
+    supabase.from("public_activity").select("*").overrideTypes<DayActivity[]>(),
+  ]);
+
+  const error = questionsRes.error ?? checkpointsRes.error ?? activityRes.error;
+  const questions = questionsRes.data ?? [];
+  const checkpoints = checkpointsRes.data ?? [];
+  const activity = activityRes.data ?? [];
+
+  const split = difficultySplit(questions);
+  const done = checkpoints.filter((c) => c.status === "done");
+  const topics = topicCoverageWithQuality(questions, done);
+  const record = maxActivityDay(activity);
+
+  return (
+    <>
+      <AppNav />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+        <PortfolioHero />
+
+        {error && <p className="mb-8 text-sm text-danger">{error.message}</p>}
+
+        <section className="mt-4">
+          <h2 className="mb-4 text-sm font-medium text-muted">Progress</h2>
           <StatsRow
             mostInDay={record?.total ?? null}
             problems={questions.length}

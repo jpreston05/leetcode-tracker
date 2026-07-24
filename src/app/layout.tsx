@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import SiteFooter from "@/components/SiteFooter";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LeetCode Tracker",
-  description: "Personal spaced-repetition tracker for LeetCode problems",
+  title: {
+    default: "LeetCode Tracker · Jack Preston",
+    template: "%s · LeetCode Tracker",
+  },
+  description:
+    "A public log of my LeetCode practice — spaced-repetition progress and a link to every solution.",
+  openGraph: {
+    title: "LeetCode Tracker · Jack Preston",
+    description:
+      "A public log of my LeetCode practice — spaced-repetition progress and a link to every solution.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
@@ -31,7 +42,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <SiteFooter />
+      </body>
     </html>
   );
 }

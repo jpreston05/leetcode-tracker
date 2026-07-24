@@ -5,10 +5,14 @@ import CheckpointLadder from "@/components/CheckpointLadder";
 import LadderRail from "@/components/LadderRail";
 import PhotoRemoveButton from "@/components/PhotoRemoveButton";
 import PhotoUpload from "@/components/PhotoUpload";
+import PublicLadder from "@/components/PublicLadder";
 import { createClient } from "@/lib/supabase/server";
 import { formatShort, todayISO } from "@/lib/checkpoints";
 import { difficultyClass } from "@/lib/ui";
-import type { Checkpoint, NotePhoto, Question } from "@/lib/types";
+import type { Checkpoint, NotePhoto, PublicCheckpoint, PublicQuestion, Question } from "@/lib/types";
+
+const linkClass =
+  "text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink";
 
 export default async function ProblemDetailPage({
   params,
@@ -17,6 +21,12 @@ export default async function ProblemDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return <PublicDetail id={id} />;
+
   const today = todayISO();
 
   const [{ data: question }, { data: checkpoints }, { data: photos }] = await Promise.all([
@@ -50,7 +60,7 @@ export default async function ProblemDetailPage({
 
   return (
     <>
-      <AppNav />
+      <AppNav isOwner />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-10">
           <p className="data mb-1 text-sm text-faint">#{question.leetcode_number}</p>
@@ -66,28 +76,15 @@ export default async function ProblemDetailPage({
             <span>
               solved <span className="data">{formatShort(question.date_solved)}</span>
             </span>
-            <a
-              href={question.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
-            >
+            <a href={question.url} target="_blank" rel="noreferrer" className={linkClass}>
               LeetCode ↗
             </a>
             {question.solution_url && (
-              <a
-                href={question.solution_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
-              >
+              <a href={question.solution_url} target="_blank" rel="noreferrer" className={linkClass}>
                 GitHub ↗
               </a>
             )}
-            <Link
-              href={`/problems/${question.id}/edit`}
-              className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
-            >
+            <Link href={`/problems/${question.id}/edit`} className={linkClass}>
               Edit
             </Link>
           </div>
@@ -140,10 +137,77 @@ export default async function ProblemDetailPage({
         </section>
 
         <p className="text-sm">
-          <Link
-            href="/problems"
-            className="text-muted transition-colors duration-150 hover:text-ink"
-          >
+          <Link href="/problems" className="text-muted transition-colors duration-150 hover:text-ink">
+            ← All problems
+          </Link>
+        </p>
+      </main>
+    </>
+  );
+}
+
+// Read-only detail for the public portfolio: header + ladder progress + solve
+// links only. No confidence, notes, paper-note photos, edit link, or schedule.
+async function PublicDetail({ id }: { id: string }) {
+  const supabase = await createClient();
+
+  const [{ data: question }, { data: checkpoints }] = await Promise.all([
+    supabase
+      .from("public_questions")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle<PublicQuestion>(),
+    supabase
+      .from("public_checkpoints")
+      .select("*")
+      .eq("question_id", id)
+      // catch-ups share their rung's sequence; is_catchup (false first) slots them after it
+      .order("sequence")
+      .order("is_catchup")
+      .overrideTypes<PublicCheckpoint[]>(),
+  ]);
+
+  if (!question) notFound();
+  const rungs = checkpoints ?? [];
+
+  return (
+    <>
+      <AppNav />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+        <div className="mb-10">
+          <p className="data mb-1 text-sm text-faint">#{question.leetcode_number}</p>
+          <h1 className="mb-3 text-2xl font-semibold tracking-tight text-balance">
+            {question.title}
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+            <span className={difficultyClass[question.difficulty]}>{question.difficulty}</span>
+            <span>{question.topic}</span>
+            <span>
+              solved <span className="data">{formatShort(question.date_solved)}</span>
+            </span>
+            <a href={question.url} target="_blank" rel="noreferrer" className={linkClass}>
+              LeetCode ↗
+            </a>
+            {question.solution_url && (
+              <a href={question.solution_url} target="_blank" rel="noreferrer" className={linkClass}>
+                GitHub ↗
+              </a>
+            )}
+          </div>
+        </div>
+
+        <section className="mb-12 rounded-xl border border-line bg-surface p-5">
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <h2 className="text-sm font-medium text-muted">Review ladder</h2>
+            <div className="w-36">
+              <LadderRail checkpoints={rungs} today="" hideSchedule />
+            </div>
+          </div>
+          <PublicLadder checkpoints={rungs} />
+        </section>
+
+        <p className="text-sm">
+          <Link href="/problems" className="text-muted transition-colors duration-150 hover:text-ink">
             ← All problems
           </Link>
         </p>

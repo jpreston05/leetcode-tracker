@@ -38,6 +38,17 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
   new numbered file per change; the user pastes it into the SQL editor.
   (`v5-solution-links.sql` adds `questions.solution_url` +
   `checkpoints.solution_url` and the `set_checkpoint_solution` function.)
+  (`v6-public-portfolio.sql` adds the `public_questions` /
+  `public_checkpoints` / `public_activity` views.)
+- **Public portfolio is view-gated, not RLS-gated.** Viewing (`/`,
+  `/problems`, `/problems/:id`) is open to anonymous visitors; only
+  `/problems/new` and `/problems/:id/edit` require auth (guarded in
+  `src/proxy.ts`). Base-table RLS stays owner-only — anonymous reads go
+  through the `public_*` views (v6), which are `security_invoker = false`
+  (bypass RLS) and expose only portfolio-safe columns (no notes, confidence,
+  photo paths, or schedule). Pages branch on `isOwner` (`getUser()`); the
+  owner path queries base tables, the public path queries the views. Never add
+  private columns to a `public_*` view.
 
 ## Conventions
 
