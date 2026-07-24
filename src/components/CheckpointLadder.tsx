@@ -14,6 +14,8 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
   const router = useRouter();
   const today = todayISO();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [linkDraft, setLinkDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +43,31 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
     setError(null);
     const { error } = await createClient().rpc("undo_checkpoint", { p_id: cp.id });
     if (error) setError(error.message);
+    setBusy(false);
+    router.refresh();
+  }
+
+  function openLinkEditor(cp: Checkpoint) {
+    setError(null);
+    setLinkDraft(cp.solution_url ?? "");
+    setEditingLinkId(cp.id);
+  }
+
+  // Solve links can be attached long after the review; the set_checkpoint_solution
+  // RPC is the only write path (checkpoints have no direct write RLS).
+  async function saveSolution(cp: Checkpoint) {
+    setBusy(true);
+    setError(null);
+    const { error } = await createClient().rpc("set_checkpoint_solution", {
+      p_id: cp.id,
+      p_url: linkDraft.trim(),
+    });
+    if (error) {
+      setError(error.message);
+      setBusy(false);
+      return;
+    }
+    setEditingLinkId(null);
     setBusy(false);
     router.refresh();
   }
@@ -83,6 +110,55 @@ export default function CheckpointLadder({ checkpoints }: { checkpoints: Checkpo
                   </button>
                 )}
               </div>
+
+              {cp.status === "done" &&
+                (editingLinkId === cp.id ? (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      type="url"
+                      autoFocus
+                      value={linkDraft}
+                      onChange={(e) => setLinkDraft(e.target.value)}
+                      placeholder="https://github.com/you/leetcode/…"
+                      className="field w-full max-w-sm text-sm"
+                    />
+                    <button onClick={() => saveSolution(cp)} disabled={busy} className="btn-primary">
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingLinkId(null)}
+                      disabled={busy}
+                      className="btn-ghost"
+                    >
+                      Cancel
+                    </button>
+                    {error && <p className="w-full text-sm text-danger">{error}</p>}
+                  </div>
+                ) : cp.solution_url ? (
+                  <div className="mt-1.5 flex items-center gap-3 text-xs">
+                    <a
+                      href={cp.solution_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
+                    >
+                      GitHub ↗
+                    </a>
+                    <button
+                      onClick={() => openLinkEditor(cp)}
+                      className="text-faint underline-offset-2 hover:text-ink hover:underline"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => openLinkEditor(cp)}
+                    className="mt-1.5 text-xs text-faint underline-offset-2 hover:text-ink hover:underline"
+                  >
+                    + Add solve link
+                  </button>
+                ))}
 
               {actionable && confirmingId !== cp.id && (
                 <button onClick={() => setConfirmingId(cp.id)} className="btn-primary mt-3">

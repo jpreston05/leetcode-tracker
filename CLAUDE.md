@@ -20,8 +20,9 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
   functions: the `generate_ladder` trigger (7 rungs on question insert),
   `complete_checkpoint` (rejects anything but the due, unlocked rung; clean →
   unlock next rung, else insert a 3-day catch-up), `undo_checkpoint` (same-day
-  only). The UI calls these via `supabase.rpc()` — never write checkpoint rows
-  directly.
+  only), `set_checkpoint_solution` (attach/clear a GitHub link on a done rung,
+  any time after). The UI calls these via `supabase.rpc()` — never write
+  checkpoint rows directly.
 - **At most one actionable checkpoint per question**: the only non-done row
   with a non-null `due_date`. Locked rungs have `due_date = NULL`
   (completion-anchored scheduling — future dates are unknowable). The
@@ -35,6 +36,8 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 - **Schema changes are hand-run SQL files** in `supabase/` (`schema.sql`,
   `v2-checkpoints.sql`, `v4-photos-undo.sql`) — no migration tooling. Add a
   new numbered file per change; the user pastes it into the SQL editor.
+  (`v5-solution-links.sql` adds `questions.solution_url` +
+  `checkpoints.solution_url` and the `set_checkpoint_solution` function.)
 
 ## Conventions
 

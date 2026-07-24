@@ -37,6 +37,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
       confidence: Number(form.get("confidence")),
       date_solved: form.get("date_solved"),
       notes: (form.get("notes") as string) || null,
+      solution_url: (form.get("solution_url") as string).trim() || null,
     };
 
     const supabase = createClient();
@@ -147,6 +148,17 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
           </select>
         </label>
       </div>
+
+      <label className="flex flex-col gap-1.5 text-sm text-muted">
+        GitHub solution <span className="text-faint">(optional)</span>
+        <input
+          name="solution_url"
+          type="url"
+          defaultValue={initial?.solution_url ?? ""}
+          placeholder="https://github.com/you/leetcode/…"
+          className="field"
+        />
+      </label>
 
       <label className="flex flex-col gap-1.5 text-sm text-muted">
         Notes <span className="text-faint">(optional)</span>
