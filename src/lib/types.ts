@@ -20,6 +20,7 @@ export interface Question {
   confidence: number; // 1-5
   date_solved: string; // YYYY-MM-DD
   notes: string | null;
+  solution_url: string | null; // GitHub link for the initial solve
   created_at: string;
 }
 
@@ -45,5 +46,6 @@ export interface Checkpoint {
   status: CheckpointStatus;
   completed_date: string | null;
   outcome: Outcome | null;
+  solution_url: string | null; // GitHub link for this review's solve
   created_at: string;
 }

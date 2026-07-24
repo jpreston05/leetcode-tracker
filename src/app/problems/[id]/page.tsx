@@ -74,6 +74,16 @@ export default async function ProblemDetailPage({
             >
               LeetCode ↗
             </a>
+            {question.solution_url && (
+              <a
+                href={question.solution_url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
+              >
+                GitHub ↗
+              </a>
+            )}
             <Link
               href={`/problems/${question.id}/edit`}
               className="text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink"
