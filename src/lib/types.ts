@@ -24,6 +24,20 @@ export interface Question {
   created_at: string;
 }
 
+// Mirrors the public_questions view (v6): the portfolio-safe subset of a
+// question shown to anonymous visitors. No confidence, notes, or user_id.
+export type PublicQuestion = Pick<
+  Question,
+  "id" | "leetcode_number" | "title" | "url" | "difficulty" | "topic" | "solution_url" | "date_solved"
+>;
+
+// Mirrors the public_checkpoints view (v6): ladder progress + solve links,
+// with the schedule (due/completed dates, intervals) stripped.
+export type PublicCheckpoint = Pick<
+  Checkpoint,
+  "question_id" | "sequence" | "is_catchup" | "status" | "outcome" | "solution_url"
+>;
+
 // Mirrors public.note_photos: many photos per question.
 export interface NotePhoto {
   id: string;

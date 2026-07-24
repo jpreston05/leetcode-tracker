@@ -3,6 +3,7 @@ import AppNav from "@/components/AppNav";
 import ProblemsList, { type ProblemListRow } from "@/components/ProblemsList";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/checkpoints";
+import type { PublicCheckpoint, PublicQuestion } from "@/lib/types";
 
 export default async function ProblemsPage({
   searchParams,
@@ -12,11 +13,18 @@ export default async function ProblemsPage({
   const { q, topic } = await searchParams;
   const supabase = await createClient();
   const today = todayISO();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isOwner = !!user;
 
-  let query = supabase
-    .from("questions")
-    .select("*, checkpoints(sequence, interval_label, due_date, status, is_catchup)")
-    .order("leetcode_number");
+  // Owner reads the base tables (full ladder + schedule); the public view reads
+  // the anon-safe views and joins checkpoints in memory (no schedule columns).
+  const source = isOwner
+    ? { table: "questions" as const, embed: "*, checkpoints(sequence, interval_label, due_date, status, is_catchup)" }
+    : { table: "public_questions" as const, embed: "*" };
+
+  let query = supabase.from(source.table).select(source.embed).order("leetcode_number");
 
   if (topic) query = query.ilike("topic", topic.trim());
   if (q?.trim()) {
@@ -27,18 +35,41 @@ export default async function ProblemsPage({
       : query.or(`title.ilike.%${safe}%,topic.ilike.%${safe}%`);
   }
 
-  const { data: questions, error } = await query.overrideTypes<ProblemListRow[]>();
+  const { data, error } = await query;
   const filtered = Boolean(q?.trim() || topic);
+
+  let rows: ProblemListRow[];
+  let listError = error?.message ?? null;
+
+  if (isOwner) {
+    rows = (data ?? []) as unknown as ProblemListRow[];
+  } else {
+    // Attach each question's checkpoints from the separate public view.
+    const questions = (data ?? []) as unknown as PublicQuestion[];
+    const { data: cps, error: cpError } = await supabase
+      .from("public_checkpoints")
+      .select("*")
+      .overrideTypes<PublicCheckpoint[]>();
+    listError = listError ?? cpError?.message ?? null;
+    const byQuestion = new Map<string, PublicCheckpoint[]>();
+    for (const cp of cps ?? []) {
+      const list = byQuestion.get(cp.question_id) ?? [];
+      list.push(cp);
+      byQuestion.set(cp.question_id, list);
+    }
+    rows = questions.map((question) => ({
+      ...question,
+      checkpoints: byQuestion.get(question.id) ?? [],
+    }));
+  }
 
   return (
     <>
-      <AppNav />
+      <AppNav isOwner={isOwner} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-6 flex items-baseline gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">Problems</h1>
-          {!!questions?.length && (
-            <span className="data text-sm text-faint">{questions.length}</span>
-          )}
+          {rows.length > 0 && <span className="data text-sm text-faint">{rows.length}</span>}
         </div>
 
         <form action="/problems" className="mb-6 flex flex-wrap items-center gap-3">
@@ -67,9 +98,10 @@ export default async function ProblemsPage({
           )}
         </form>
 
-        {error && <p className="text-sm text-danger">{error.message}</p>}
+        {listError && <p className="text-sm text-danger">{listError}</p>}
 
-        {questions?.length === 0 &&
+        {rows.length === 0 &&
+          !listError &&
           (filtered ? (
             <p className="text-sm text-muted">
               No matches.{" "}
@@ -77,7 +109,7 @@ export default async function ProblemsPage({
                 Clear filters.
               </Link>
             </p>
-          ) : (
+          ) : isOwner ? (
             <div className="rounded-xl border border-line px-6 py-10 text-center">
               <p className="mb-1 text-sm font-medium">The logbook is empty</p>
               <p className="mb-5 text-sm text-muted">
@@ -87,9 +119,13 @@ export default async function ProblemsPage({
                 Add your first solve
               </Link>
             </div>
+          ) : (
+            <p className="text-sm text-muted">No problems logged yet.</p>
           ))}
 
-        {!!questions?.length && <ProblemsList rows={questions} today={today} />}
+        {rows.length > 0 && (
+          <ProblemsList rows={rows} today={today} hideSchedule={!isOwner} />
+        )}
       </main>
     </>
   );

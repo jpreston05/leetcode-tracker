@@ -7,30 +7,51 @@ import { formatShort } from "@/lib/checkpoints";
 import { difficultyClass } from "@/lib/ui";
 import type { Checkpoint, Question } from "@/lib/types";
 
-export type ProblemListRow = Question & {
-  checkpoints: Pick<
-    Checkpoint,
-    "sequence" | "interval_label" | "due_date" | "status" | "is_catchup"
-  >[];
+// The list is shared between the owner logbook and the public portfolio; the
+// public view drops due_date/interval_label (schedule) and passes hideSchedule.
+export type ProblemListRow = Pick<
+  Question,
+  "id" | "leetcode_number" | "title" | "difficulty" | "topic"
+> & {
+  checkpoints: (Pick<Checkpoint, "sequence" | "status" | "is_catchup"> &
+    Partial<Pick<Checkpoint, "interval_label" | "due_date">>)[];
 };
 
 // Responsive logbook list. Desktop shows topic + ladder inline; on phones
 // those fold into a per-row disclosure (animated grid-rows, interruptible)
 // instead of forcing the whole table to scroll sideways.
-export default function ProblemsList({ rows, today }: { rows: ProblemListRow[]; today: string }) {
+export default function ProblemsList({
+  rows,
+  today,
+  hideSchedule = false,
+}: {
+  rows: ProblemListRow[];
+  today: string;
+  hideSchedule?: boolean;
+}) {
   return (
     <ul>
       {rows.map((q) => (
-        <ProblemRow key={q.id} q={q} today={today} />
+        <ProblemRow key={q.id} q={q} today={today} hideSchedule={hideSchedule} />
       ))}
     </ul>
   );
 }
 
-function ProblemRow({ q, today }: { q: ProblemListRow; today: string }) {
+function ProblemRow({
+  q,
+  today,
+  hideSchedule,
+}: {
+  q: ProblemListRow;
+  today: string;
+  hideSchedule: boolean;
+}) {
   const [open, setOpen] = useState(false);
-  const pending = q.checkpoints.find((c) => c.status !== "done" && c.due_date !== null);
-  const graduated = !pending && q.checkpoints.length > 0;
+  const rungs = q.checkpoints.filter((c) => !c.is_catchup);
+  const doneCount = rungs.filter((c) => c.status === "done").length;
+  const graduated = rungs.length > 0 && doneCount === rungs.length;
+  const pending = q.checkpoints.find((c) => c.status !== "done" && c.due_date != null);
 
   return (
     <li className="border-b border-line/60">
@@ -46,10 +67,14 @@ function ProblemRow({ q, today }: { q: ProblemListRow; today: string }) {
 
         <span className="hidden w-28 truncate text-sm text-muted sm:block">{q.topic}</span>
         <div className="hidden w-24 sm:block">
-          <LadderRail checkpoints={q.checkpoints} today={today} />
+          <LadderRail checkpoints={q.checkpoints} today={today} hideSchedule={hideSchedule} />
         </div>
         <span className="data w-16 shrink-0 text-right text-xs">
-          <NextBadge pending={pending} graduated={graduated} today={today} />
+          {hideSchedule ? (
+            <ProgressBadge doneCount={doneCount} total={rungs.length} graduated={graduated} />
+          ) : (
+            <NextBadge pending={pending} graduated={graduated} today={today} />
+          )}
         </span>
 
         <button
@@ -88,17 +113,23 @@ function ProblemRow({ q, today }: { q: ProblemListRow; today: string }) {
             <div className="min-w-0">
               <p className="truncate text-sm text-muted">{q.topic}</p>
               <p className="data mt-1 text-xs text-faint">
-                {graduated
-                  ? "all 7 reviews done"
-                  : pending
-                    ? `${pending.interval_label}${pending.is_catchup ? "" : " review"} · ${
-                        pending.due_date! <= today ? "due now" : `due ${formatShort(pending.due_date!)}`
-                      }`
-                    : "no reviews scheduled"}
+                {hideSchedule
+                  ? graduated
+                    ? "all 7 reviews done"
+                    : `${doneCount} of ${rungs.length} reviews done`
+                  : graduated
+                    ? "all 7 reviews done"
+                    : pending
+                      ? `${pending.interval_label}${pending.is_catchup ? "" : " review"} · ${
+                          pending.due_date! <= today
+                            ? "due now"
+                            : `due ${formatShort(pending.due_date!)}`
+                        }`
+                      : "no reviews scheduled"}
               </p>
             </div>
             <div className="w-28 shrink-0">
-              <LadderRail checkpoints={q.checkpoints} today={today} />
+              <LadderRail checkpoints={q.checkpoints} today={today} hideSchedule={hideSchedule} />
             </div>
           </div>
         </div>
@@ -117,8 +148,27 @@ function NextBadge({
   today: string;
 }) {
   if (graduated) return <span className="text-olive">done</span>;
-  if (!pending) return <span className="text-faint">—</span>;
-  if (pending.due_date! < today) return <span className="text-danger">overdue</span>;
-  if (pending.due_date! === today) return <span className="text-olive">due</span>;
-  return <span className="text-muted">{formatShort(pending.due_date!)}</span>;
+  if (!pending || pending.due_date == null) return <span className="text-faint">—</span>;
+  if (pending.due_date < today) return <span className="text-danger">overdue</span>;
+  if (pending.due_date === today) return <span className="text-olive">due</span>;
+  return <span className="text-muted">{formatShort(pending.due_date)}</span>;
+}
+
+// Public portfolio: progress along the ladder, no dates.
+function ProgressBadge({
+  doneCount,
+  total,
+  graduated,
+}: {
+  doneCount: number;
+  total: number;
+  graduated: boolean;
+}) {
+  if (graduated) return <span className="text-olive">done</span>;
+  if (total === 0) return <span className="text-faint">—</span>;
+  return (
+    <span className="text-muted">
+      {doneCount}/{total}
+    </span>
+  );
 }

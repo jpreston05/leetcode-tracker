@@ -9,7 +9,7 @@ const links = [
   { href: "/problems", label: "Problems" },
 ];
 
-export default function AppNav() {
+export default function AppNav({ isOwner = false }: { isOwner?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -43,19 +43,21 @@ export default function AppNav() {
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/problems/new"
-            className="btn-primary h-9 px-3 text-[0.8125rem]"
-            aria-label="Add solve"
-          >
-            <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-            </svg>
-            <span className="hidden sm:inline">Add solve</span>
-          </Link>
-          <SignOutButton />
-        </div>
+        {isOwner && (
+          <div className="flex items-center gap-2">
+            <Link
+              href="/problems/new"
+              className="btn-primary h-9 px-3 text-[0.8125rem]"
+              aria-label="Add solve"
+            >
+              <svg aria-hidden width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+              <span className="hidden sm:inline">Add solve</span>
+            </Link>
+            <SignOutButton />
+          </div>
+        )}
       </div>
     </header>
   );

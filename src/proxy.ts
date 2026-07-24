@@ -1,9 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// Owner-only routes: viewing is public (recruiters land on the portfolio),
+// but adding or editing a solve requires signing in.
+const OWNER_ONLY = [/^\/problems\/new(\/|$)/, /^\/problems\/[^/]+\/edit(\/|$)/];
+
 // Auth gate + session refresh. Runs before every matched request:
 // - refreshes the Supabase session cookie if it has expired
-// - redirects logged-out visitors to /login
+// - redirects logged-out visitors away from the owner-only edit routes
 // - redirects logged-in visitors away from /login
 export default async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -35,9 +39,8 @@ export default async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith("/login") || path.startsWith("/auth");
 
-  if (!user && !isPublic) {
+  if (!user && OWNER_ONLY.some((re) => re.test(path))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

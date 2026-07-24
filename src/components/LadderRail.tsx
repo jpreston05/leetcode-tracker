@@ -1,19 +1,26 @@
 import type { Checkpoint } from "@/lib/types";
 
-type RailCheckpoint = Pick<Checkpoint, "sequence" | "is_catchup" | "status" | "due_date">;
+type RailCheckpoint = Pick<Checkpoint, "sequence" | "is_catchup" | "status"> & {
+  due_date?: string | null;
+};
 
 // The signature motif: a question's 7-rung ladder as a segmented rail.
 // Filled = done, breathing outline = due now, dated outline = scheduled,
 // hollow = locked. Catch-ups don't get segments; they surface in the
 // full ladder view.
+//
+// hideSchedule (public portfolio): drop the due/scheduled distinction so no
+// dates leak — filled = done, hollow = still to come.
 export default function LadderRail({
   checkpoints,
   today,
   size = "sm",
+  hideSchedule = false,
 }: {
   checkpoints: RailCheckpoint[];
   today: string;
   size?: "sm" | "lg";
+  hideSchedule?: boolean;
 }) {
   const rungs = checkpoints
     .filter((c) => !c.is_catchup)
@@ -29,8 +36,10 @@ export default function LadderRail({
       aria-label={`${doneCount} of ${rungs.length} reviews done`}
     >
       {rungs.map((r) => {
-        const due = r.status !== "done" && r.due_date !== null && r.due_date <= today;
-        const scheduled = r.status !== "done" && r.due_date !== null && !due;
+        const due =
+          !hideSchedule && r.status !== "done" && r.due_date != null && r.due_date <= today;
+        const scheduled =
+          !hideSchedule && r.status !== "done" && r.due_date != null && !due;
         return (
           <span
             key={r.sequence}
