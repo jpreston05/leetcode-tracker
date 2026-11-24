@@ -1,5 +1,3 @@
-import type { Checkpoint } from "./types";
-
 /** YYYY-MM-DD from a Date's local components (avoids UTC off-by-one). */
 export function toISODate(date: Date): string {
   const y = date.getFullYear();
@@ -37,32 +35,6 @@ export function formatShort(iso: string): string {
     day: "numeric",
     month: "short",
   });
-}
-
-/** The one rung the user can tick right now: unlocked, dated, due. */
-export function isActionable(cp: Checkpoint, today: string): boolean {
-  return cp.status !== "done" && cp.due_date !== null && cp.due_date <= today;
-}
-
-export const BUCKETS = [
-  "Today",
-  "Tomorrow",
-  "This week",
-  "Next week",
-  "This month",
-  "Later",
-] as const;
-export type Bucket = (typeof BUCKETS)[number];
-
-/** Rolling buckets: overdue folds into Today; This week = 2-7 days out, etc. */
-export function bucketFor(dueDate: string, today: string): Bucket {
-  const d = daysUntil(dueDate, today);
-  if (d <= 0) return "Today";
-  if (d === 1) return "Tomorrow";
-  if (d <= 7) return "This week";
-  if (d <= 14) return "Next week";
-  if (d <= 30) return "This month";
-  return "Later";
 }
 
 /**

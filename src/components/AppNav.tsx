@@ -17,7 +17,7 @@ export default function AppNav({ isOwner = false }: { isOwner?: boolean }) {
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2" aria-label="LeetCode Tracker home">
-            {/* brand mark: the ladder rail, miniature */}
+            {/* brand mark: three progress pips */}
             <span aria-hidden className="flex items-center gap-0.5">
               <span className="h-1.5 w-2.5 rounded-full bg-olive" />
               <span className="h-1.5 w-2.5 rounded-full bg-olive" />

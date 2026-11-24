@@ -44,13 +44,13 @@ never color alone.
   `rounded-full` rail segments and markers.
 - Depth via borders and surface steps, not shadows. No glassmorphism.
 
-## Signature motif — the ladder rail
+## Signature motif — the Today queue
 
-A question's 7-rung ladder as a segmented rail (`LadderRail.tsx`):
-filled olive = done, breathing olive outline = due now (`.rail-due`),
-outlined = scheduled, hollow `raised` = locked. Appears mini in the nav
-wordmark, per-row in the problems table, and large on the detail page.
-The vertical `CheckpointLadder` is the same vocabulary at full size.
+The dashboard leads with a bounded queue (`TodayQueue.tsx`): new-problem
+slot(s) first, then at most 2 review cards (plus a "Try the next one" button once they are done) on a `border-line-strong` surface,
+then a quiet mono "+N more due". Grades always pair color with a word
+(Clean olive, Shaky terra, Failed danger — `gradeClass` in `ui.ts`). The nav
+wordmark keeps three pips (two filled olive, one hollow) as the brand mark.
 
 ## Component vocabulary (in `globals.css @layer components`)
 
@@ -61,9 +61,8 @@ The vertical `CheckpointLadder` is the same vocabulary at full size.
 ## Motion
 
 State-conveying only, 150–250ms ease-out (`transition-colors duration-150`).
-One personality animation: `rail-breathe` on the due rung (2.4s soft pulse).
-`prefers-reduced-motion`: pulse becomes a static ring; all transitions
-collapse to instant.
+Inline forms (log attempt) enter with a 200ms fade + 4px rise via
+`starting:`. `prefers-reduced-motion`: all transitions collapse to instant.
 
 ## Charts
 

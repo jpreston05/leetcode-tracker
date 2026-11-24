@@ -2,14 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   cleanRate,
   difficultySplit,
-  graduatedCount,
   maxActivityDay,
+  progress,
+  reviewsOf,
   quoteIndexFor,
   topicCoverage,
   topicCoverageWithQuality,
   weekLoad,
 } from "./stats";
-import type { Difficulty, Outcome } from "./types";
+import type { Difficulty, Grade } from "./types";
 
 const TODAY = "2026-07-20";
 
@@ -54,12 +55,12 @@ describe("topicCoverageWithQuality", () => {
       { id: "q2", topic: "DP" },
       { id: "q3", topic: "graphs" },
     ];
-    const done = [
-      { question_id: "q1", outcome: "clean" as const },
-      { question_id: "q2", outcome: "failed" as const },
-      { question_id: "q1", outcome: "clean" as const },
+    const reviews = [
+      { question_id: "q1", grade: "clean" as const },
+      { question_id: "q2", grade: "failed" as const },
+      { question_id: "q1", grade: "clean" as const },
     ];
-    const rows = topicCoverageWithQuality(questions, done);
+    const rows = topicCoverageWithQuality(questions, reviews);
     expect(rows).toEqual([
       { topic: "dp", count: 2, reviews: 3, cleanPct: 67 },
       { topic: "graphs", count: 1, reviews: 0, cleanPct: null },
@@ -68,8 +69,8 @@ describe("topicCoverageWithQuality", () => {
 });
 
 describe("cleanRate", () => {
-  const done = (...outcomes: Outcome[]) => outcomes.map((outcome) => ({ outcome }));
-  it("is null with no completions", () => {
+  const done = (...grades: Grade[]) => grades.map((grade) => ({ grade }));
+  it("is null with no reviews", () => {
     expect(cleanRate([])).toBeNull();
   });
   it("rounds the clean percentage", () => {
@@ -77,39 +78,39 @@ describe("cleanRate", () => {
   });
 });
 
-describe("graduatedCount", () => {
-  const rung = (question_id: string, status: "done" | "locked", is_catchup = false) => ({
-    question_id,
-    status,
-    is_catchup,
+describe("reviewsOf", () => {
+  it("drops the earliest attempt per question (date, then created_at)", () => {
+    const a = (question_id: string, attempted_on: string, created_at = "t1") => ({
+      question_id,
+      attempted_on,
+      created_at,
+      grade: "clean" as const,
+    });
+    const attempts = [a("q1", "2026-07-08"), a("q1", "2026-07-01"), a("q2", "2026-07-02", "t2"), a("q2", "2026-07-02", "t1")];
+    expect(reviewsOf(attempts)).toEqual([attempts[0], attempts[2]]);
   });
+});
 
-  it("counts only fully-done ladders, ignoring catch-ups", () => {
-    const cps = [
-      // q1: both rungs done + an unfinished catch-up -> still graduated
-      rung("q1", "done"),
-      rung("q1", "done"),
-      rung("q1", "locked", true),
-      // q2: one rung pending
-      rung("q2", "done"),
-      rung("q2", "locked"),
-    ];
-    expect(graduatedCount(cps)).toBe(1);
-  });
-
-  it("is 0 with no checkpoints", () => {
-    expect(graduatedCount([])).toBe(0);
+describe("progress", () => {
+  it("splits solved into in-review and retired, out of 150", () => {
+    expect(progress([{ retired_on: null }, { retired_on: "2026-07-01" }, { retired_on: null }])).toEqual({
+      solved: 3,
+      inReview: 2,
+      retired: 1,
+      total: 150,
+    });
   });
 });
 
 describe("weekLoad", () => {
   it("folds overdue into today and buckets the rest by date", () => {
     const pending = [
-      { due_date: "2026-07-15" }, // overdue -> today
-      { due_date: "2026-07-20" }, // today
-      { due_date: "2026-07-22" },
-      { due_date: "2026-07-26" },
-      { due_date: "2026-08-01" }, // beyond the window -> excluded
+      { next_due: "2026-07-15", retired_on: null }, // overdue -> today
+      { next_due: "2026-07-20", retired_on: null }, // today
+      { next_due: "2026-07-22", retired_on: null },
+      { next_due: "2026-07-26", retired_on: null },
+      { next_due: "2026-08-01", retired_on: null }, // beyond the window -> excluded
+      { next_due: null, retired_on: "2026-07-01" }, // retired -> excluded
     ];
     const load = weekLoad(pending, TODAY);
     expect(load).toHaveLength(7);

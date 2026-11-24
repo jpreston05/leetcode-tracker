@@ -15,20 +15,25 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 
 ## Architecture invariants (don't break these)
 
-- **Checkpoints are a DB-enforced state machine.** The `checkpoints` table has
-  NO insert/update/delete RLS policies. All writes go through security-definer
-  functions: the `generate_ladder` trigger (7 rungs on question insert),
-  `complete_checkpoint` (rejects anything but the due, unlocked rung; clean →
-  unlock next rung, else insert a 3-day catch-up), `undo_checkpoint` (same-day
-  only), `set_checkpoint_solution` (attach/clear a GitHub link on a done rung,
-  any time after). The UI calls these via `supabase.rpc()` — never write
-  checkpoint rows directly.
-- **At most one actionable checkpoint per question**: the only non-done row
-  with a non-null `due_date`. Locked rungs have `due_date = NULL`
-  (completion-anchored scheduling — future dates are unknowable). The
-  dashboard agenda query relies on this.
+- **Attempts are the source of truth; the schedule is derived.** Every solve
+  or review is a row in `attempts` (the earliest per question is the first
+  solve); manual "push to tomorrow" / un-retire are rows in `schedule_events`.
+  `questions.interval_days` / `next_due` / `retired_on` are a CACHE produced
+  only by replaying that history through `computeSchedule`
+  (`src/lib/schedule.ts`, pure + tested). Never patch those columns — write
+  via `src/lib/attempts.ts`, whose helpers always end in `recomputeQuestion`.
+  `questions.date_solved` is kept in sync with the first attempt's date.
+  NULL `interval_days` = not computed yet; the owner dashboard self-heals
+  those on load.
+- **Scheduling rules live in one place.** Clean ≤15 min; Clean → gap×3,
+  Shaky → same interval, Failed → 1 day; Clean at gap ≥21 retires. The Today
+  queue (`src/lib/queue.ts`: ≤2 reviews/day + "try the next one", 1–2 new slots) is mirrored in jq in
+  `daily-reminder.yml` — keep in sync.
+- **The old ladder is archived, not live.** `checkpoints` + its RPCs
+  (v2/v4/v5) were frozen by v7 (trigger dropped, execute revoked). Don't read
+  or write it from the app.
 - **Dates are NZ-pinned**: `nz_today()` in SQL, `todayISO()` in
-  `src/lib/checkpoints.ts` (Pacific/Auckland). Vercel runs UTC — never use
+  `src/lib/dates.ts` (Pacific/Auckland). Vercel runs UTC — never use
   `new Date()` date math directly for "today".
 - **Photos** live in the private `note-photos` bucket at
   `{user_id}/{question_id}/{uuid}.jpg`, tracked in `note_photos` rows,
@@ -40,6 +45,9 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
   `checkpoints.solution_url` and the `set_checkpoint_solution` function.)
   (`v6-public-portfolio.sql` adds the `public_questions` /
   `public_checkpoints` / `public_activity` views.)
+  (`v7-attempts.sql` adds `attempts`, `schedule_events`, the schedule cache
+  columns, `public_attempts` + `public_questions.retired`, drops
+  `public_checkpoints`, and migrates ladder history into attempts.)
 - **Public portfolio is view-gated, not RLS-gated.** Viewing (`/`,
   `/problems`, `/problems/:id`) is open to anonymous visitors; only
   `/problems/new` and `/problems/:id/edit` require auth (guarded in
@@ -54,7 +62,7 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 
 - Pure logic lives in `src/lib/` with Vitest coverage; components stay thin.
 - Data text wears `.data` (Geist Mono, tabular); color never carries meaning
-  alone (words/icons accompany outcome + difficulty colors — see
+  alone (words/icons accompany grade + difficulty colors — see
   `src/lib/ui.ts`).
 - Buttons/inputs use the `.btn-*` / `.field` classes from globals.css.
 - Charts are plain HTML/CSS with validated mark tokens (`*-mark` colors);
@@ -65,9 +73,9 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 ## Ops
 
 - GitHub Actions: `keep-warm.yml` (Supabase free tier pauses after 7 idle
-  days) and `daily-reminder.yml` (12pm NZ, Resend email every day: due
-  problems grouped by review interval, a "solve something new" nudge on clear
-  days, or a "nice work" note if today's due items are already done).
+  days) and `daily-reminder.yml` (12pm NZ, Resend email every day: the Today
+  queue — top 2 due reviews, "+N more", 1–2 new-problem nudge — or a "nice
+  work" note if today's work is already done).
   Secrets live in GitHub repo settings, NOT in the app
   or Vercel: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SECRET_KEY`,
   `RESEND_API_KEY`, `REMINDER_EMAIL`. Scheduled workflows only run from

@@ -1,4 +1,4 @@
-import { addDaysISO, computeStreaks, formatShort } from "@/lib/checkpoints";
+import { addDaysISO, computeStreaks, formatShort } from "@/lib/dates";
 import type { DayActivity } from "@/lib/stats";
 
 // Intensity buckets: 0, 1, 2-3, 4-5, 6+ — our olive ramp, not GitHub green.

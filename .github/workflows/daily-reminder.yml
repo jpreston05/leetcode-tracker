@@ -1,6 +1,7 @@
-# Daily review reminder: emails via Resend every day (NZ time). Due problems
-# are grouped by which review they are; on clear days it nudges toward solving
-# something new instead, unless today's tasks are already done.
+# Daily review reminder: emails via Resend every day (NZ time). Mirrors the
+# dashboard's Today queue (src/lib/queue.ts): up to 2 due reviews, most overdue
+# first, a "+N more" count, and 1 new-problem slot (2 when fewer than 2 reviews
+# are due). Keep the two in sync.
 #
 # Required repository secrets:
 #   SUPABASE_URL         https://<ref>.supabase.co   (same as keep-warm)
@@ -27,7 +28,7 @@ jobs:
         run: |
           TODAY=$(TZ=Pacific/Auckland date +%F)
           curl -sf -o rows.json \
-            "${SUPABASE_URL}/rest/v1/checkpoints?select=interval_label,interval_days,is_catchup,due_date,questions(leetcode_number,title,url)&status=neq.done&due_date=lte.${TODAY}&order=due_date" \
+            "${SUPABASE_URL}/rest/v1/questions?select=leetcode_number,title,url,next_due&retired_on=is.null&next_due=lte.${TODAY}&order=next_due,leetcode_number" \
             -H "apikey: ${SUPABASE_SECRET_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SECRET_KEY}"
           count=$(jq length rows.json)
@@ -58,7 +59,7 @@ jobs:
           # text in a same-subject thread is exactly what Gmail collapses as
           # "quoted text". Keep this list in sync with src/lib/quotes.ts.
           QUOTES=(
-            "Every rung climbed is a step closer to Sydney."
+            "Every clean re-solve is a step closer to Sydney."
             "Six months of steady beats six weeks of cramming."
             "You're building the engineer that Sydney offer letter goes to."
             "Today's review is tomorrow's calm interview."
@@ -74,40 +75,31 @@ jobs:
           nice_date=$(TZ=Pacific/Auckland date '+%a %d %b')
           if [ "$n" = "0" ] && [ "$done_today" = "true" ]; then
             subject="Nice work — today's tasks are done · ${nice_date}"
-            body="<p>Everything due today is done — nice work. Nothing left on the ladder for today; rest up or get ahead with a new problem if you're keen.</p>"
+            body="<p>Everything due today is done — nice work. Rest up, or get ahead with a new problem if you're keen.</p>"
           elif [ "$n" = "0" ]; then
-            subject="All clear today — solve something new · ${nice_date}"
-            body="<p>Nothing is due today — the ladder is clear. Good time to pick up one or two new problems and keep the momentum going.</p>"
+            subject="No reviews today — solve something new · ${nice_date}"
+            body="<p>Nothing is due today. Good time to pick up two new problems and keep the momentum going.</p>"
           else
             subject="${n} ${plural} due today · ${nice_date}"
-            # Sections per review interval (regular reviews first, then
-            # catch-ups), each a heading + list of linked problems.
-            # "3 days" -> "3-day reviews"; "3-day catch-up" -> "3-day catch-ups".
-            # Anything older than today gets an "overdue N days" tag.
-            sections=$(jq -r --arg today "${{ steps.due.outputs.today }}" '
+            new_slots=$([ "$n" -lt 2 ] && echo "two new problems" || echo "one new problem")
+            # Top 2 reviews, most overdue first; the rest just roll forward.
+            list=$(jq -r --arg today "${{ steps.due.outputs.today }}" '
               def days_late:
                 (($today + "T00:00:00Z" | fromdate)
-                 - (.due_date + "T00:00:00Z" | fromdate)) / 86400 | round;
-              group_by([.is_catchup, .interval_days])
-              | map(
-                  "<p style=\"margin:14px 0 4px\"><strong>"
-                  + (if .[0].is_catchup
-                     then (.[0].interval_label | @html) + "s"
-                     else (.[0].interval_label | sub("s$"; "") | gsub(" "; "-") | @html) + " reviews"
-                     end)
-                  + " (" + (length | tostring) + ")</strong></p>"
-                  + "<ul style=\"margin:0;padding-left:20px\">"
-                  + (map(
-                      "<li style=\"margin:0 0 6px\"><a href=\"\(.questions.url)\">\(.questions.leetcode_number|tostring). \(.questions.title | @html)</a>"
-                      + (if .due_date < $today
-                         then " — <strong>overdue \(days_late) day\(if days_late == 1 then "" else "s" end)</strong>"
-                         else "" end)
-                      + "</li>"
-                    ) | join(""))
-                  + "</ul>"
-                )
-              | join("")' rows.json)
-            body="<p>${n} ${plural} in the queue:</p>${sections}"
+                 - (.next_due + "T00:00:00Z" | fromdate)) / 86400 | round;
+              "<ul style=\"margin:0;padding-left:20px\">"
+              + (.[:2] | map(
+                  "<li style=\"margin:0 0 6px\"><a href=\"\(.url)\">\(.leetcode_number|tostring). \(.title | @html)</a>"
+                  + (if .next_due < $today
+                     then " — <strong>overdue \(days_late) day\(if days_late == 1 then "" else "s" end)</strong>"
+                     else "" end)
+                  + "</li>"
+                ) | join(""))
+              + "</ul>"
+              + (if length > 2
+                 then "<p style=\"margin:4px 0 0;color:#777\">+\(length - 2) more due — they roll into the next few days.</p>"
+                 else "" end)' rows.json)
+            body="<p>Today's reviews:</p>${list}<p>Plus ${new_slots} from the list.</p>"
           fi
           payload=$(jq -n \
             --arg to "$REMINDER_EMAIL" \

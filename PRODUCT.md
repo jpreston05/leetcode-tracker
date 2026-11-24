@@ -10,7 +10,7 @@ One user: a software engineering student grinding LeetCode for big-tech/quant in
 
 ## Product Purpose
 
-A private spaced-repetition tracker for solved LeetCode problems. Each problem climbs a 7-rung review ladder (1 day → 6 months, completion-anchored, 3-day catch-ups on bad reviews). The app's whole value is answering one question instantly — *what's due?* — and making long-term consistency visible (ladder, agenda, activity heatmap). It is also a portfolio piece: the craft of the UI is part of the point.
+A private spaced-repetition tracker for solved LeetCode problems. Each problem gets an adaptive review interval: clean timed re-solves stretch it (×3 the actual gap), shaky ones repeat it, failures reset it, and a clean re-solve after 3+ weeks retires the problem. The app's whole value is answering one question instantly — *what do I do today?* — with a small, bounded queue (1–2 new problems, 2 reviews, more on request), and making long-term consistency visible (queue, progress, activity heatmap). It is also a portfolio piece: the craft of the UI is part of the point.
 
 ## Brand Personality
 
@@ -27,7 +27,7 @@ A private spaced-repetition tracker for solved LeetCode problems. Each problem c
 1. **The data is the interface.** Numbers, dates, and progress carry the screens; chrome recedes. Tabular figures everywhere data aligns.
 2. **Evening-calm.** A committed dark theme built for lamp-lit rooms — low-glare surfaces, soft contrast steps, nothing fluorescent.
 3. **One glance, one answer.** Every screen leads with "what should I do right now?" Due-work first, everything else second.
-4. **Progress you can feel.** The ladder, agenda, and heatmap make consistency tangible — earned, factual, never gamified.
+4. **Progress you can feel.** The Today queue, X/150 progress, and heatmap make consistency tangible — earned, factual, never gamified.
 5. **Earned familiarity.** Standard affordances, consistent component vocabulary, no invented controls. The tool disappears into the task.
 
 ## Accessibility & Inclusion
