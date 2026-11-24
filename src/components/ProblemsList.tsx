@@ -2,79 +2,48 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import LadderRail from "./LadderRail";
-import { formatShort } from "@/lib/checkpoints";
+import { formatShort } from "@/lib/dates";
+import type { Question } from "@/lib/types";
 import { difficultyClass } from "@/lib/ui";
-import type { Checkpoint, Question } from "@/lib/types";
 
 // The list is shared between the owner logbook and the public portfolio; the
-// public view drops due_date/interval_label (schedule) and passes hideSchedule.
-export type ProblemListRow = Pick<
-  Question,
-  "id" | "leetcode_number" | "title" | "difficulty" | "topic"
-> & {
-  checkpoints: (Pick<Checkpoint, "sequence" | "status" | "is_catchup"> &
-    Partial<Pick<Checkpoint, "interval_label" | "due_date">>)[];
+// public rows carry no next_due (schedule), so they show status only.
+export type ProblemListRow = Pick<Question, "id" | "leetcode_number" | "title" | "difficulty" | "topic"> & {
+  retired: boolean;
+  next_due?: string | null;
+  attempts: number;
 };
 
-// Responsive logbook list. Desktop shows topic + ladder inline; on phones
+// Responsive logbook list. Desktop shows topic + attempts inline; on phones
 // those fold into a per-row disclosure (animated grid-rows, interruptible)
 // instead of forcing the whole table to scroll sideways.
-export default function ProblemsList({
-  rows,
-  today,
-  hideSchedule = false,
-}: {
-  rows: ProblemListRow[];
-  today: string;
-  hideSchedule?: boolean;
-}) {
+export default function ProblemsList({ rows, today }: { rows: ProblemListRow[]; today: string }) {
   return (
     <ul>
       {rows.map((q) => (
-        <ProblemRow key={q.id} q={q} today={today} hideSchedule={hideSchedule} />
+        <ProblemRow key={q.id} q={q} today={today} />
       ))}
     </ul>
   );
 }
 
-function ProblemRow({
-  q,
-  today,
-  hideSchedule,
-}: {
-  q: ProblemListRow;
-  today: string;
-  hideSchedule: boolean;
-}) {
+function ProblemRow({ q, today }: { q: ProblemListRow; today: string }) {
   const [open, setOpen] = useState(false);
-  const rungs = q.checkpoints.filter((c) => !c.is_catchup);
-  const doneCount = rungs.filter((c) => c.status === "done").length;
-  const graduated = rungs.length > 0 && doneCount === rungs.length;
-  const pending = q.checkpoints.find((c) => c.status !== "done" && c.due_date != null);
+  const attemptsLabel = `${q.attempts} attempt${q.attempts === 1 ? "" : "s"}`;
 
   return (
     <li className="border-b border-line/60">
       <div className="-mx-2 flex items-center gap-3 rounded-lg px-2 py-3 transition-colors duration-150 hover:bg-surface">
-        <Link
-          href={`/problems/${q.id}`}
-          className="group flex min-w-0 flex-1 items-baseline gap-2"
-        >
+        <Link href={`/problems/${q.id}`} className="group flex min-w-0 flex-1 items-baseline gap-2">
           <span className="data text-faint">{q.leetcode_number}</span>
           <span className="truncate font-medium text-sm group-hover:text-ink">{q.title}</span>
           <span className={`text-xs ${difficultyClass[q.difficulty]}`}>{q.difficulty}</span>
         </Link>
 
         <span className="hidden w-28 truncate text-sm text-muted sm:block">{q.topic}</span>
-        <div className="hidden w-24 sm:block">
-          <LadderRail checkpoints={q.checkpoints} today={today} hideSchedule={hideSchedule} />
-        </div>
+        <span className="data hidden w-24 text-right text-xs text-faint sm:block">{attemptsLabel}</span>
         <span className="data w-16 shrink-0 text-right text-xs">
-          {hideSchedule ? (
-            <ProgressBadge doneCount={doneCount} total={rungs.length} graduated={graduated} />
-          ) : (
-            <NextBadge pending={pending} graduated={graduated} today={today} />
-          )}
+          <StatusBadge q={q} today={today} />
         </span>
 
         <button
@@ -109,28 +78,18 @@ function ProblemRow({
         }`}
       >
         <div className="overflow-hidden">
-          <div className="flex items-center justify-between gap-4 pb-3.5">
-            <div className="min-w-0">
-              <p className="truncate text-sm text-muted">{q.topic}</p>
-              <p className="data mt-1 text-xs text-faint">
-                {hideSchedule
-                  ? graduated
-                    ? "all 7 reviews done"
-                    : `${doneCount} of ${rungs.length} reviews done`
-                  : graduated
-                    ? "all 7 reviews done"
-                    : pending
-                      ? `${pending.interval_label}${pending.is_catchup ? "" : " review"} · ${
-                          pending.due_date! <= today
-                            ? "due now"
-                            : `due ${formatShort(pending.due_date!)}`
-                        }`
-                      : "no reviews scheduled"}
-              </p>
-            </div>
-            <div className="w-28 shrink-0">
-              <LadderRail checkpoints={q.checkpoints} today={today} hideSchedule={hideSchedule} />
-            </div>
+          <div className="pb-3.5">
+            <p className="truncate text-sm text-muted">{q.topic}</p>
+            <p className="data mt-1 text-xs text-faint">
+              {attemptsLabel} ·{" "}
+              {q.retired
+                ? "retired"
+                : q.next_due == null
+                  ? "in review"
+                  : q.next_due <= today
+                    ? "due now"
+                    : `due ${formatShort(q.next_due)}`}
+            </p>
           </div>
         </div>
       </div>
@@ -138,37 +97,12 @@ function ProblemRow({
   );
 }
 
-function NextBadge({
-  pending,
-  graduated,
-  today,
-}: {
-  pending: ProblemListRow["checkpoints"][number] | undefined;
-  graduated: boolean;
-  today: string;
-}) {
-  if (graduated) return <span className="text-olive">done</span>;
-  if (!pending || pending.due_date == null) return <span className="text-faint">—</span>;
-  if (pending.due_date < today) return <span className="text-danger">overdue</span>;
-  if (pending.due_date === today) return <span className="text-olive">due</span>;
-  return <span className="text-muted">{formatShort(pending.due_date)}</span>;
-}
-
-// Public portfolio: progress along the ladder, no dates.
-function ProgressBadge({
-  doneCount,
-  total,
-  graduated,
-}: {
-  doneCount: number;
-  total: number;
-  graduated: boolean;
-}) {
-  if (graduated) return <span className="text-olive">done</span>;
-  if (total === 0) return <span className="text-faint">—</span>;
-  return (
-    <span className="text-muted">
-      {doneCount}/{total}
-    </span>
-  );
+function StatusBadge({ q, today }: { q: ProblemListRow; today: string }) {
+  if (q.retired) return <span className="text-olive">retired</span>;
+  // public rows have no schedule
+  if (q.next_due === undefined) return <span className="text-muted">in review</span>;
+  if (q.next_due === null) return <span className="text-faint">—</span>;
+  if (q.next_due < today) return <span className="text-danger">overdue</span>;
+  if (q.next_due === today) return <span className="text-olive">due</span>;
+  return <span className="text-muted">{formatShort(q.next_due)}</span>;
 }

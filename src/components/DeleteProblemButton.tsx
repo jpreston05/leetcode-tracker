@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 // Two-step delete: removes storage photos first, then the question row
-// (checkpoints + note_photos rows cascade in the database).
+// (attempts, events + note_photos rows cascade in the database).
 export default function DeleteProblemButton({ questionId }: { questionId: string }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
@@ -48,7 +48,7 @@ export default function DeleteProblemButton({ questionId }: { questionId: string
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <span className="text-sm text-muted">Removes its ladder, history, and photos.</span>
+      <span className="text-sm text-muted">Removes its attempt history and photos.</span>
       <button
         onClick={destroy}
         disabled={busy}

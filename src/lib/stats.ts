@@ -1,5 +1,27 @@
-import { addDaysISO } from "./checkpoints";
-import type { Checkpoint, Difficulty, Question } from "./types";
+import { addDaysISO } from "./dates";
+import { TOTAL_PROBLEMS, type Difficulty, type Grade, type Question } from "./types";
+
+/** A graded review: any attempt after the first solve. */
+export type Review = { question_id: string; grade: Grade | null };
+
+/** Drops each question's first attempt (the solve), leaving its reviews. */
+export function reviewsOf<A extends Review & { attempted_on: string; created_at: string }>(
+  attempts: A[]
+): A[] {
+  const first = new Map<string, A>();
+  for (const a of attempts) {
+    const current = first.get(a.question_id);
+    if (
+      !current ||
+      a.attempted_on < current.attempted_on ||
+      (a.attempted_on === current.attempted_on && a.created_at < current.created_at)
+    ) {
+      first.set(a.question_id, a);
+    }
+  }
+  const solves = new Set(first.values());
+  return attempts.filter((a) => !solves.has(a));
+}
 
 // Row shape of the activity_daily view.
 export interface DayActivity {
@@ -52,16 +74,16 @@ export interface TopicRow {
 /** topicCoverage + per-topic review quality: which topics you log vs which you fail. */
 export function topicCoverageWithQuality(
   questions: Pick<Question, "id" | "topic">[],
-  done: Pick<Checkpoint, "question_id" | "outcome">[]
+  reviews: Review[]
 ): TopicRow[] {
   const topicById = new Map(questions.map((q) => [q.id, normalizeTopic(q.topic)]));
   const quality = new Map<string, { reviews: number; clean: number }>();
-  for (const d of done) {
-    const topic = topicById.get(d.question_id);
+  for (const r of reviews) {
+    const topic = topicById.get(r.question_id);
     if (!topic) continue;
     const entry = quality.get(topic) ?? { reviews: 0, clean: 0 };
     entry.reviews++;
-    if (d.outcome === "clean") entry.clean++;
+    if (r.grade === "clean") entry.clean++;
     quality.set(topic, entry);
   }
   return topicCoverage(questions).map((row) => {
@@ -74,42 +96,40 @@ export function topicCoverageWithQuality(
   });
 }
 
-/** % of completed reviews that were clean; null when nothing is completed. */
-export function cleanRate(done: Pick<Checkpoint, "outcome">[]): number | null {
-  if (done.length === 0) return null;
-  const clean = done.filter((c) => c.outcome === "clean").length;
-  return Math.round((clean / done.length) * 100);
+/** % of reviews graded clean; null when there are none. */
+export function cleanRate(reviews: Pick<Review, "grade">[]): number | null {
+  if (reviews.length === 0) return null;
+  const clean = reviews.filter((r) => r.grade === "clean").length;
+  return Math.round((clean / reviews.length) * 100);
 }
 
-/** Questions whose entire non-catchup ladder is done. */
-export function graduatedCount(
-  checkpoints: Pick<Checkpoint, "question_id" | "is_catchup" | "status">[]
-): number {
-  const perQuestion = new Map<string, { rungs: number; done: number }>();
-  for (const cp of checkpoints) {
-    if (cp.is_catchup) continue;
-    const entry = perQuestion.get(cp.question_id) ?? { rungs: 0, done: 0 };
-    entry.rungs++;
-    if (cp.status === "done") entry.done++;
-    perQuestion.set(cp.question_id, entry);
-  }
-  let graduated = 0;
-  for (const { rungs, done } of perQuestion.values()) {
-    if (rungs > 0 && rungs === done) graduated++;
-  }
-  return graduated;
+export interface Progress {
+  solved: number;
+  inReview: number;
+  retired: number;
+  total: number;
 }
 
-/** Review count for each of the next 7 days; overdue folds into today. */
+/** X/150 solved, of which Y are still in review and Z have retired. */
+export function progress(questions: Pick<Question, "retired_on">[]): Progress {
+  const retired = questions.filter((q) => q.retired_on !== null).length;
+  return {
+    solved: questions.length,
+    inReview: questions.length - retired,
+    retired,
+    total: TOTAL_PROBLEMS,
+  };
+}
+
+/** Reviews due on each of the next 7 days; overdue folds into today. */
 export function weekLoad(
-  pending: Pick<Checkpoint, "due_date">[],
+  questions: Pick<Question, "next_due" | "retired_on">[],
   today: string
 ): { date: string; count: number }[] {
+  const active = questions.filter((q) => q.retired_on === null && q.next_due !== null);
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDaysISO(today, i);
-    const count = pending.filter((p) =>
-      i === 0 ? p.due_date !== null && p.due_date <= today : p.due_date === date
-    ).length;
+    const count = active.filter((q) => (i === 0 ? q.next_due! <= today : q.next_due === date)).length;
     return { date, count };
   });
 }

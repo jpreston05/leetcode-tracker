@@ -1,4 +1,4 @@
-import type { Difficulty, Outcome } from "./types";
+import type { Difficulty, Grade } from "./types";
 
 // Shared text-color vocabulary. Color never stands alone — it always
 // accompanies the written label.
@@ -8,9 +8,9 @@ export const difficultyClass: Record<Difficulty, string> = {
   Hard: "text-danger",
 };
 
-export const outcomeClass: Record<Outcome, string> = {
+export const gradeClass: Record<Grade, string> = {
   clean: "text-olive",
-  struggled: "text-terra",
+  shaky: "text-terra",
   failed: "text-danger",
 };
 

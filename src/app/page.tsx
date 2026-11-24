@@ -1,28 +1,33 @@
 import Link from "next/link";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import AppNav from "@/components/AppNav";
+import DayProgressBar from "@/components/DayProgressBar";
 import DifficultySplitBar from "@/components/DifficultySplitBar";
 import PortfolioHero from "@/components/PortfolioHero";
 import StatsRow from "@/components/StatsRow";
+import TodayQueue, { type QueueRow } from "@/components/TodayQueue";
 import TopicCoverage from "@/components/TopicCoverage";
-import UpcomingAgenda, { type AgendaRow } from "@/components/UpcomingAgenda";
 import WeekLoadStrip from "@/components/WeekLoadStrip";
-import { createClient } from "@/lib/supabase/server";
-import { daysUntil, todayISO } from "@/lib/checkpoints";
+import { recomputeQuestion } from "@/lib/attempts";
+import { daysUntil, todayISO } from "@/lib/dates";
+import { buildTodayQueue, todayProgress } from "@/lib/queue";
 import { QUOTES } from "@/lib/quotes";
 import {
   cleanRate,
   difficultySplit,
-  graduatedCount,
   maxActivityDay,
+  progress,
   quoteIndexFor,
+  reviewsOf,
   topicCoverageWithQuality,
   weekLoad,
   type DayActivity,
 } from "@/lib/stats";
-import type { Checkpoint, PublicCheckpoint, PublicQuestion, Question } from "@/lib/types";
+import { createClient } from "@/lib/supabase/server";
+import type { Attempt, PublicAttempt, PublicQuestion, Question } from "@/lib/types";
 
-type StatCheckpoint = Pick<Checkpoint, "question_id" | "is_catchup" | "status" | "outcome">;
+type DashboardQuestion = QueueRow & Pick<Question, "date_solved">;
+type StatAttempt = Pick<Attempt, "question_id" | "grade" | "attempted_on" | "created_at">;
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -36,32 +41,33 @@ export default async function HomePage() {
 
   const today = todayISO();
 
-  const [agendaRes, questionsRes, checkpointsRes, activityRes] = await Promise.all([
-    supabase
-      .from("checkpoints")
-      .select("*, questions(id, leetcode_number, title, difficulty, topic)")
-      .neq("status", "done")
-      .not("due_date", "is", null)
-      .order("due_date")
-      .overrideTypes<AgendaRow[]>(),
+  // Self-heal: schedule any question whose cache was never computed (rows
+  // migrated by v7, or a write that failed between insert and recompute).
+  const { data: unscheduled } = await supabase.from("questions").select("id").is("interval_days", null);
+  for (const { id } of unscheduled ?? []) await recomputeQuestion(supabase, id);
+
+  const [questionsRes, attemptsRes, activityRes] = await Promise.all([
     supabase
       .from("questions")
-      .select("id, difficulty, topic, date_solved")
-      .overrideTypes<Pick<Question, "id" | "difficulty" | "topic" | "date_solved">[]>(),
+      .select("id, leetcode_number, title, difficulty, topic, date_solved, next_due, retired_on, interval_days")
+      .overrideTypes<DashboardQuestion[]>(),
     supabase
-      .from("checkpoints")
-      .select("question_id, is_catchup, status, outcome")
-      .overrideTypes<StatCheckpoint[]>(),
+      .from("attempts")
+      .select("question_id, grade, attempted_on, created_at")
+      .overrideTypes<StatAttempt[]>(),
     supabase.from("activity_daily").select("*").overrideTypes<DayActivity[]>(),
   ]);
 
-  const error = agendaRes.error ?? questionsRes.error ?? checkpointsRes.error ?? activityRes.error;
-  const agenda = agendaRes.data ?? [];
+  const error = questionsRes.error ?? attemptsRes.error ?? activityRes.error;
   const questions = questionsRes.data ?? [];
-  const checkpoints = checkpointsRes.data ?? [];
+  const reviews = reviewsOf(attemptsRes.data ?? []);
   const activity = activityRes.data ?? [];
 
-  const dueCount = agenda.filter((r) => r.due_date! <= today).length;
+  const solvedToday = questions.filter((q) => q.date_solved === today).length;
+  const reviewedToday = new Set(reviews.filter((r) => r.attempted_on === today).map((r) => r.question_id)).size;
+  const queue = buildTodayQueue(questions, today, solvedToday, reviewedToday);
+  const dueCount = queue.due.length;
+  const overall = progress(questions);
   const quote = QUOTES[quoteIndexFor(today, QUOTES.length)];
   // "Day N" of the plan, counted from the earliest logged solve.
   const firstSolve = questions.reduce<string | null>(
@@ -70,9 +76,8 @@ export default async function HomePage() {
   );
   const planDay = firstSolve ? daysUntil(today, firstSolve) + 1 : null;
   const split = difficultySplit(questions);
-  const done = checkpoints.filter((c) => c.status === "done");
-  const topics = topicCoverageWithQuality(questions, done);
-  const load = weekLoad(agenda, today);
+  const topics = topicCoverageWithQuality(questions, reviews);
+  const load = weekLoad(questions, today);
   const record = maxActivityDay(activity);
 
   return (
@@ -89,9 +94,14 @@ export default async function HomePage() {
           </p>
           <h1 className="text-2xl font-semibold tracking-tight text-balance">
             {dueCount === 0
-              ? "All clear tonight"
+              ? reviewedToday > 0
+                ? "Today's reviews are done"
+                : "No reviews due today"
               : `${dueCount} review${dueCount === 1 ? "" : "s"} due`}
           </h1>
+          <p className="data mt-2 text-sm text-muted">
+            {overall.solved}/{overall.total} solved · {overall.inReview} in review · {overall.retired} retired
+          </p>
         </div>
 
         <section className="mb-10 rounded-xl border border-line bg-surface px-6 py-5">
@@ -103,9 +113,12 @@ export default async function HomePage() {
 
         {error && <p className="mb-8 text-sm text-danger">{error.message}</p>}
 
-        {agenda.length > 0 ? (
+        {questions.length > 0 ? (
           <>
-            <UpcomingAgenda rows={agenda} today={today} />
+            <div className="mb-6">
+              <DayProgressBar progress={todayProgress(queue)} />
+            </div>
+            <TodayQueue queue={queue} today={today} />
             <section className="mt-10">
               <h2 className="mb-4 text-sm font-medium text-muted">This week&apos;s load</h2>
               <WeekLoadStrip load={load} />
@@ -114,9 +127,9 @@ export default async function HomePage() {
         ) : (
           !error && (
             <div className="rounded-xl border border-line px-6 py-10 text-center">
-              <p className="mb-1 text-sm font-medium">Nothing scheduled yet</p>
+              <p className="mb-1 text-sm font-medium">Nothing logged yet</p>
               <p className="mb-5 text-sm text-muted">
-                Log a solved problem and its review ladder starts tomorrow.
+                Log a solved problem and its first review is scheduled from how it went.
               </p>
               <Link href="/problems/new" className="btn-primary">
                 Add your first solve
@@ -130,9 +143,9 @@ export default async function HomePage() {
           <StatsRow
             mostInDay={record?.total ?? null}
             problems={questions.length}
-            reviews={done.length}
-            cleanRate={cleanRate(done)}
-            graduated={graduatedCount(checkpoints)}
+            reviews={reviews.length}
+            cleanRate={cleanRate(reviews)}
+            retired={overall.retired}
           />
           {split.total > 0 && (
             <div className="mt-8">
@@ -157,31 +170,30 @@ export default async function HomePage() {
 }
 
 // Public portfolio home: progress + coverage + activity, drawn from the
-// anon-readable public_* views. No quote, no agenda, no schedule.
+// anon-readable public_* views. No quote, no queue, no schedule.
 async function PublicHome() {
   const supabase = await createClient();
   const today = todayISO();
 
-  const [questionsRes, checkpointsRes, activityRes] = await Promise.all([
+  const [questionsRes, attemptsRes, activityRes] = await Promise.all([
     supabase
       .from("public_questions")
-      .select("id, difficulty, topic")
-      .overrideTypes<Pick<PublicQuestion, "id" | "difficulty" | "topic">[]>(),
+      .select("id, difficulty, topic, retired")
+      .overrideTypes<Pick<PublicQuestion, "id" | "difficulty" | "topic" | "retired">[]>(),
     supabase
-      .from("public_checkpoints")
-      .select("question_id, is_catchup, status, outcome")
-      .overrideTypes<Pick<PublicCheckpoint, "question_id" | "is_catchup" | "status" | "outcome">[]>(),
+      .from("public_attempts")
+      .select("question_id, seq, grade")
+      .overrideTypes<Pick<PublicAttempt, "question_id" | "seq" | "grade">[]>(),
     supabase.from("public_activity").select("*").overrideTypes<DayActivity[]>(),
   ]);
 
-  const error = questionsRes.error ?? checkpointsRes.error ?? activityRes.error;
+  const error = questionsRes.error ?? attemptsRes.error ?? activityRes.error;
   const questions = questionsRes.data ?? [];
-  const checkpoints = checkpointsRes.data ?? [];
+  const reviews = (attemptsRes.data ?? []).filter((a) => a.seq > 1);
   const activity = activityRes.data ?? [];
 
   const split = difficultySplit(questions);
-  const done = checkpoints.filter((c) => c.status === "done");
-  const topics = topicCoverageWithQuality(questions, done);
+  const topics = topicCoverageWithQuality(questions, reviews);
   const record = maxActivityDay(activity);
 
   return (
@@ -197,9 +209,9 @@ async function PublicHome() {
           <StatsRow
             mostInDay={record?.total ?? null}
             problems={questions.length}
-            reviews={done.length}
-            cleanRate={cleanRate(done)}
-            graduated={graduatedCount(checkpoints)}
+            reviews={reviews.length}
+            cleanRate={cleanRate(reviews)}
+            retired={questions.filter((q) => q.retired).length}
           />
           {split.total > 0 && (
             <div className="mt-8">

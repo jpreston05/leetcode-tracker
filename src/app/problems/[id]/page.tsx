@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppNav from "@/components/AppNav";
-import CheckpointLadder from "@/components/CheckpointLadder";
-import LadderRail from "@/components/LadderRail";
+import AttemptHistory from "@/components/AttemptHistory";
 import PhotoRemoveButton from "@/components/PhotoRemoveButton";
 import PhotoUpload from "@/components/PhotoUpload";
-import PublicLadder from "@/components/PublicLadder";
+import ScheduleEventButton from "@/components/ScheduleEventButton";
 import { createClient } from "@/lib/supabase/server";
-import { formatShort, todayISO } from "@/lib/checkpoints";
-import { difficultyClass } from "@/lib/ui";
-import type { Checkpoint, NotePhoto, PublicCheckpoint, PublicQuestion, Question } from "@/lib/types";
+import { daysUntil, formatShort, todayISO } from "@/lib/dates";
+import { difficultyClass, gradeClass } from "@/lib/ui";
+import { GRADES, type Attempt, type NotePhoto, type PublicAttempt, type PublicQuestion, type Question } from "@/lib/types";
 
 const linkClass =
   "text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink";
@@ -29,16 +28,15 @@ export default async function ProblemDetailPage({
 
   const today = todayISO();
 
-  const [{ data: question }, { data: checkpoints }, { data: photos }] = await Promise.all([
+  const [{ data: question }, { data: attempts }, { data: photos }] = await Promise.all([
     supabase.from("questions").select("*").eq("id", id).maybeSingle<Question>(),
     supabase
-      .from("checkpoints")
+      .from("attempts")
       .select("*")
       .eq("question_id", id)
-      // catch-ups share their rung's sequence; created_at slots them after it
-      .order("sequence")
+      .order("attempted_on")
       .order("created_at")
-      .overrideTypes<Checkpoint[]>(),
+      .overrideTypes<Attempt[]>(),
     supabase
       .from("note_photos")
       .select("*")
@@ -91,13 +89,17 @@ export default async function ProblemDetailPage({
         </div>
 
         <section className="mb-12 rounded-xl border border-line bg-surface p-5">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-medium text-muted">Review ladder</h2>
-            <div className="w-36">
-              <LadderRail checkpoints={checkpoints ?? []} today={today} />
-            </div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <StatusLine question={question} today={today} />
+            {question.retired_on ? (
+              <ScheduleEventButton questionId={question.id} kind="unretire" />
+            ) : (
+              question.next_due !== null &&
+              question.next_due <= today && <ScheduleEventButton questionId={question.id} kind="defer" />
+            )}
           </div>
-          <CheckpointLadder checkpoints={checkpoints ?? []} />
+          <h2 className="mb-1 text-sm font-medium text-muted">Attempts</h2>
+          <AttemptHistory questionId={question.id} attempts={attempts ?? []} />
         </section>
 
         {question.notes && (
@@ -146,29 +148,26 @@ export default async function ProblemDetailPage({
   );
 }
 
-// Read-only detail for the public portfolio: header + ladder progress + solve
-// links only. No confidence, notes, paper-note photos, edit link, or schedule.
+// Read-only detail for the public portfolio: header, status, and the grade of
+// each attempt with its solve link. No confidence, notes, photos, dates, or schedule.
 async function PublicDetail({ id }: { id: string }) {
   const supabase = await createClient();
 
-  const [{ data: question }, { data: checkpoints }] = await Promise.all([
+  const [{ data: question }, { data: attempts }] = await Promise.all([
     supabase
       .from("public_questions")
       .select("*")
       .eq("id", id)
       .maybeSingle<PublicQuestion>(),
     supabase
-      .from("public_checkpoints")
+      .from("public_attempts")
       .select("*")
       .eq("question_id", id)
-      // catch-ups share their rung's sequence; is_catchup (false first) slots them after it
-      .order("sequence")
-      .order("is_catchup")
-      .overrideTypes<PublicCheckpoint[]>(),
+      .order("seq")
+      .overrideTypes<PublicAttempt[]>(),
   ]);
 
   if (!question) notFound();
-  const rungs = checkpoints ?? [];
 
   return (
     <>
@@ -197,13 +196,31 @@ async function PublicDetail({ id }: { id: string }) {
         </div>
 
         <section className="mb-12 rounded-xl border border-line bg-surface p-5">
-          <div className="mb-5 flex items-center justify-between gap-4">
-            <h2 className="text-sm font-medium text-muted">Review ladder</h2>
-            <div className="w-36">
-              <LadderRail checkpoints={rungs} today="" hideSchedule />
-            </div>
-          </div>
-          <PublicLadder checkpoints={rungs} />
+          <p className="mb-4 text-sm">
+            <span className="font-medium">{question.retired ? "Retired" : "In review"}</span>
+            <span className="data ml-3 text-muted">
+              {(attempts ?? []).length} attempt{(attempts ?? []).length === 1 ? "" : "s"}
+            </span>
+          </p>
+          <ol className="flex flex-col">
+            {(attempts ?? []).map((a) => (
+              <li key={a.seq} className="flex items-baseline gap-3 border-b border-line py-2 text-sm last:border-b-0">
+                <span className="w-20 text-xs text-faint">{a.seq === 1 ? "first solve" : `review ${a.seq - 1}`}</span>
+                {a.grade ? (
+                  <span className={`font-medium ${gradeClass[a.grade]}`}>
+                    {GRADES.find((g) => g.value === a.grade)!.label}
+                  </span>
+                ) : (
+                  <span className="text-faint">solved</span>
+                )}
+                {a.solution_url && (
+                  <a href={a.solution_url} target="_blank" rel="noreferrer" className={`text-xs ${linkClass}`}>
+                    GitHub ↗
+                  </a>
+                )}
+              </li>
+            ))}
+          </ol>
         </section>
 
         <p className="text-sm">
@@ -213,5 +230,35 @@ async function PublicDetail({ id }: { id: string }) {
         </p>
       </main>
     </>
+  );
+}
+
+function StatusLine({ question, today }: { question: Question; today: string }) {
+  if (question.retired_on) {
+    return (
+      <p className="text-sm">
+        <span className="font-medium text-olive">Retired</span>
+        <span className="ml-3 text-muted">
+          on <span className="data">{formatShort(question.retired_on)}</span>
+        </span>
+      </p>
+    );
+  }
+  if (question.next_due === null) {
+    return <p className="text-sm text-muted">Scheduling…</p>;
+  }
+  const d = daysUntil(question.next_due, today);
+  return (
+    <p className="text-sm">
+      <span className="font-medium">In review</span>
+      <span className="ml-3 text-muted">
+        next due <span className="data">{formatShort(question.next_due)}</span>
+        {d < 0 && <span className="data ml-2 text-danger">{-d}d overdue</span>}
+        {d === 0 && <span className="ml-2 text-olive">today</span>}
+        {question.interval_days !== null && (
+          <span className="data ml-2 text-faint">· {question.interval_days}-day gap</span>
+        )}
+      </span>
+    </p>
   );
 }

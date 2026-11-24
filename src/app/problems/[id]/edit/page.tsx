@@ -28,7 +28,7 @@ export default async function EditProblemPage({
         <div className="mb-8">
           <h1 className="text-2xl font-semibold tracking-tight">Edit problem</h1>
           <p className="mt-1 text-sm text-muted">
-            Editing details never rewrites the review ladder or its history.
+            Edit the solve date, time, and grade from the attempt history on the problem page.
           </p>
         </div>
         <ProblemForm initial={question} />

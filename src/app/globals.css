@@ -105,26 +105,7 @@ body {
   }
 }
 
-/* the one animation with a personality: the due rung breathing */
-@keyframes rail-breathe {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 oklch(0.74 0.13 115 / 0.45);
-  }
-  50% {
-    box-shadow: 0 0 0 4px oklch(0.74 0.13 115 / 0);
-  }
-}
-
-.rail-due {
-  animation: rail-breathe 2.4s ease-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .rail-due {
-    animation: none;
-    box-shadow: 0 0 0 2px oklch(0.74 0.13 115 / 0.35);
-  }
   *,
   *::before,
   *::after {

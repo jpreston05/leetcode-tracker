@@ -2,8 +2,8 @@ import Link from "next/link";
 import AppNav from "@/components/AppNav";
 import ProblemsList, { type ProblemListRow } from "@/components/ProblemsList";
 import { createClient } from "@/lib/supabase/server";
-import { todayISO } from "@/lib/checkpoints";
-import type { PublicCheckpoint, PublicQuestion } from "@/lib/types";
+import { todayISO } from "@/lib/dates";
+import type { PublicAttempt, PublicQuestion, Question } from "@/lib/types";
 
 export default async function ProblemsPage({
   searchParams,
@@ -18,10 +18,10 @@ export default async function ProblemsPage({
   } = await supabase.auth.getUser();
   const isOwner = !!user;
 
-  // Owner reads the base tables (full ladder + schedule); the public view reads
-  // the anon-safe views and joins checkpoints in memory (no schedule columns).
+  // Owner reads the base tables (with schedule); the public view reads the
+  // anon-safe views and counts attempts in memory (no schedule columns).
   const source = isOwner
-    ? { table: "questions" as const, embed: "*, checkpoints(sequence, interval_label, due_date, status, is_catchup)" }
+    ? { table: "questions" as const, embed: "*, attempts(count)" }
     : { table: "public_questions" as const, embed: "*" };
 
   let query = supabase.from(source.table).select(source.embed).order("leetcode_number");
@@ -42,25 +42,22 @@ export default async function ProblemsPage({
   let listError = error?.message ?? null;
 
   if (isOwner) {
-    rows = (data ?? []) as unknown as ProblemListRow[];
-  } else {
-    // Attach each question's checkpoints from the separate public view.
-    const questions = (data ?? []) as unknown as PublicQuestion[];
-    const { data: cps, error: cpError } = await supabase
-      .from("public_checkpoints")
-      .select("*")
-      .overrideTypes<PublicCheckpoint[]>();
-    listError = listError ?? cpError?.message ?? null;
-    const byQuestion = new Map<string, PublicCheckpoint[]>();
-    for (const cp of cps ?? []) {
-      const list = byQuestion.get(cp.question_id) ?? [];
-      list.push(cp);
-      byQuestion.set(cp.question_id, list);
-    }
-    rows = questions.map((question) => ({
+    type OwnerRow = Question & { attempts: { count: number }[] };
+    rows = ((data ?? []) as unknown as OwnerRow[]).map((question) => ({
       ...question,
-      checkpoints: byQuestion.get(question.id) ?? [],
+      retired: question.retired_on !== null,
+      attempts: question.attempts[0]?.count ?? 0,
     }));
+  } else {
+    const questions = (data ?? []) as unknown as PublicQuestion[];
+    const { data: attempts, error: attemptsError } = await supabase
+      .from("public_attempts")
+      .select("question_id")
+      .overrideTypes<Pick<PublicAttempt, "question_id">[]>();
+    listError = listError ?? attemptsError?.message ?? null;
+    const counts = new Map<string, number>();
+    for (const a of attempts ?? []) counts.set(a.question_id, (counts.get(a.question_id) ?? 0) + 1);
+    rows = questions.map((question) => ({ ...question, attempts: counts.get(question.id) ?? 0 }));
   }
 
   return (
@@ -113,7 +110,7 @@ export default async function ProblemsPage({
             <div className="rounded-xl border border-line px-6 py-10 text-center">
               <p className="mb-1 text-sm font-medium">The logbook is empty</p>
               <p className="mb-5 text-sm text-muted">
-                Every problem you add climbs a 7-rung review ladder from 1 day to 6 months.
+                Every problem you add gets reviewed until you can solve it cleanly after three weeks away.
               </p>
               <Link href="/problems/new" className="btn-primary">
                 Add your first solve
@@ -124,7 +121,7 @@ export default async function ProblemsPage({
           ))}
 
         {rows.length > 0 && (
-          <ProblemsList rows={rows} today={today} hideSchedule={!isOwner} />
+          <ProblemsList rows={rows} today={today} />
         )}
       </main>
     </>

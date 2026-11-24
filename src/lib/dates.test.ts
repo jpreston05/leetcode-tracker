@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDaysISO, bucketFor, computeStreaks, daysUntil } from "./checkpoints";
+import { addDaysISO, computeStreaks, daysUntil } from "./dates";
 
 const TODAY = "2026-07-20";
 
@@ -9,23 +9,6 @@ describe("daysUntil", () => {
     expect(daysUntil("2026-07-25", TODAY)).toBe(5);
     expect(daysUntil("2026-07-17", TODAY)).toBe(-3);
     expect(daysUntil("2026-08-03", TODAY)).toBe(14);
-  });
-});
-
-describe("bucketFor", () => {
-  it.each([
-    ["2026-07-15", "Today"], // 5 days overdue
-    ["2026-07-20", "Today"], // due today
-    ["2026-07-21", "Tomorrow"],
-    ["2026-07-22", "This week"], // +2
-    ["2026-07-27", "This week"], // +7
-    ["2026-07-28", "Next week"], // +8
-    ["2026-08-03", "Next week"], // +14
-    ["2026-08-04", "This month"], // +15
-    ["2026-08-19", "This month"], // +30
-    ["2026-08-20", "Later"], // +31
-  ])("%s -> %s", (due, bucket) => {
-    expect(bucketFor(due, TODAY)).toBe(bucket);
   });
 });
 

@@ -3,7 +3,7 @@
 // LinkedIn stays hidden until you drop the URL in.
 const NAME = "Jack Preston";
 const BLURB =
-  "Software engineering student. Every problem I solve climbs a spaced-repetition ladder from 1 day to 6 months — this is the logbook, with links to each solution.";
+  "Software engineering student. Every problem I solve comes back for timed re-solves, spaced further apart each time it goes cleanly, until it retires — this is the logbook, with links to each solution.";
 
 const LINKS: { label: string; href: string }[] = [
   { label: "jackpreston.me", href: "https://jackpreston.me" },

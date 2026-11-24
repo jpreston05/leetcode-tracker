@@ -4,15 +4,15 @@ interface Props {
   problems: number;
   reviews: number;
   cleanRate: number | null;
-  graduated: number;
+  retired: number;
 }
 
-export default function StatsRow({ mostInDay, problems, reviews, cleanRate, graduated }: Props) {
+export default function StatsRow({ mostInDay, problems, reviews, cleanRate, retired }: Props) {
   const figures: { value: string; label: string }[] = [
     { value: mostInDay === null ? "—" : String(mostInDay), label: "most in a day" },
     { value: `${problems} · ${reviews}`, label: "problems · reviews" },
     { value: cleanRate === null ? "—" : `${cleanRate}%`, label: "clean rate" },
-    { value: String(graduated), label: "graduated" },
+    { value: String(retired), label: "retired" },
   ];
 
   return (
