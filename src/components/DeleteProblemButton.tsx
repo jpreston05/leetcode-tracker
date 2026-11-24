@@ -39,7 +39,7 @@ export default function DeleteProblemButton({ questionId }: { questionId: string
     return (
       <button
         onClick={() => setConfirming(true)}
-        className="btn border border-danger/40 text-danger hover:bg-danger/10"
+        className="btn bg-coral-soft text-coral-ink hover:brightness-[0.97]"
       >
         Delete problem
       </button>
@@ -52,7 +52,7 @@ export default function DeleteProblemButton({ questionId }: { questionId: string
       <button
         onClick={destroy}
         disabled={busy}
-        className="btn bg-danger text-white hover:opacity-90"
+        className="btn bg-coral text-on-fill hover:brightness-105"
       >
         {busy ? "Deleting…" : "Yes, delete"}
       </button>

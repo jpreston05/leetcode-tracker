@@ -91,7 +91,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
         URL
         <input
           name="url"
@@ -104,7 +104,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
         Title
         <input
           name="title"
@@ -117,7 +117,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
       </label>
 
       <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
           LeetCode number
           <input
             name="leetcode_number"
@@ -130,7 +130,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
           />
         </label>
         {!initial && (
-          <label className="flex flex-col gap-1.5 text-sm text-muted">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
             Date solved
             <input
               name="date_solved"
@@ -145,7 +145,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
           Difficulty
           <select name="difficulty" required defaultValue={initial?.difficulty} className="field">
             {DIFFICULTIES.map((d) => (
@@ -153,7 +153,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
           Topic
           <input
             name="topic"
@@ -163,7 +163,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
             className="field"
           />
         </label>
-        <label className="flex flex-col gap-1.5 text-sm text-muted">
+        <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
           Confidence
           <select
             name="confidence"
@@ -184,8 +184,8 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
         <GradeFields minutes={minutes} grade={grade} onMinutesChange={setMinutes} onGradeChange={setGrade} />
       )}
 
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
-        GitHub solution <span className="text-faint">(optional)</span>
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
+        GitHub solution <span className="font-normal text-faint">(optional)</span>
         <input
           name="solution_url"
           type="url"
@@ -195,8 +195,8 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
-        Notes <span className="text-faint">(optional)</span>
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
+        Notes <span className="font-normal text-faint">(optional)</span>
         <textarea
           name="notes"
           rows={4}
@@ -209,7 +209,7 @@ export default function ProblemForm({ initial }: { initial?: Question }) {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <button type="submit" disabled={saving} className="btn-primary self-start">
-        {saving ? "Saving…" : initial ? "Save changes" : "Add to logbook"}
+        {saving ? "Saving…" : initial ? "Save changes" : "Add to logbook ✨"}
       </button>
     </form>
   );

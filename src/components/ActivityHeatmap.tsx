@@ -1,7 +1,7 @@
 import { addDaysISO, computeStreaks, formatShort } from "@/lib/dates";
 import type { DayActivity } from "@/lib/stats";
 
-// Intensity buckets: 0, 1, 2-3, 4-5, 6+ — our olive ramp, not GitHub green.
+// Intensity buckets: 0, 1, 2-3, 4-5, 6+ — our lagoon ramp, not GitHub green.
 const CELL_CLASSES = ["bg-raised", "bg-heat1", "bg-heat2", "bg-heat3", "bg-heat4"];
 
 function intensity(total: number): number {
@@ -89,7 +89,7 @@ export default function ActivityHeatmap({ rows, today }: { rows: DayActivity[]; 
         <span className="flex items-center gap-1 text-faint">
           Less
           {CELL_CLASSES.map((c) => (
-            <span key={c} className={`h-3 w-3 rounded-[3px] ${c}`} />
+            <span key={c} className={`h-3 w-3 rounded-[4px] ${c}`} />
           ))}
           More
         </span>
@@ -105,7 +105,7 @@ function Cell({ day, activity }: { day: string; activity?: DayActivity }) {
     : `No activity on ${formatShort(day)}`;
   return (
     <div
-      className={`h-3 w-3 rounded-[3px] transition-shadow duration-150 hover:ring-1 hover:ring-muted ${CELL_CLASSES[intensity(total)]}`}
+      className={`h-3 w-3 rounded-[4px] transition-shadow duration-150 hover:ring-2 hover:ring-brand-ink ${CELL_CLASSES[intensity(total)]}`}
       title={title}
     />
   );

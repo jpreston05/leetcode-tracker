@@ -29,7 +29,7 @@ export default function TopicCoverage({ topics }: { topics: TopicRow[] }) {
           >
             {topic}
           </Link>
-          <div className="h-1.5 rounded-full">
+          <div className="h-2 rounded-full bg-raised">
             <div
               className="h-full min-w-1 rounded-full bg-heat3 transition-colors duration-150 group-hover:bg-heat4"
               style={{ width: `${(count / max) * 100}%` }}

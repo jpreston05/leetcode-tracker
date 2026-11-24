@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDaysISO, computeStreaks, daysUntil } from "./dates";
+import { addDaysISO, computeStreaks, daysUntil, greetingFor } from "./dates";
 
 const TODAY = "2026-07-20";
 
@@ -48,5 +48,16 @@ describe("addDaysISO", () => {
   it("crosses month and year boundaries", () => {
     expect(addDaysISO("2026-07-31", 1)).toBe("2026-08-01");
     expect(addDaysISO("2026-01-01", -1)).toBe("2025-12-31");
+  });
+});
+
+describe("greetingFor", () => {
+  it.each([
+    [2, "Burning the midnight oil"],
+    [8, "Good morning"],
+    [13, "Good afternoon"],
+    [20, "Good evening"],
+  ])("%i:00 -> %s", (hour, greeting) => {
+    expect(greetingFor(hour)).toBe(greeting);
   });
 });

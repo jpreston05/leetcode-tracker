@@ -16,11 +16,11 @@ export default function DifficultySplitBar({ split }: { split: DifficultySplit }
 
   return (
     <div>
-      <div className="flex h-2 w-full gap-0.5 overflow-hidden rounded-full">
+      <div className="flex h-3 w-full gap-0.5 overflow-hidden rounded-full">
         {ORDER.filter((d) => split.counts[d] > 0).map((d) => (
           <div
             key={d}
-            className={`h-full min-w-1 ${MARK[d]}`}
+            className={`h-full min-w-1 rounded-full ${MARK[d]}`}
             style={{ width: `${split.pct[d]}%` }}
             title={`${d} — ${split.counts[d]} of ${split.total} (${Math.round(split.pct[d])}%)`}
           />
@@ -29,7 +29,7 @@ export default function DifficultySplitBar({ split }: { split: DifficultySplit }
       <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">
         {ORDER.map((d) => (
           <span key={d} className="flex items-center gap-1.5">
-            <span aria-hidden className={`h-2 w-2 rounded-full ${MARK[d]}`} />
+            <span aria-hidden className={`h-2.5 w-2.5 rounded-full ${MARK[d]}`} />
             <span className="text-muted">{d}</span>
             <span className="data text-ink">{split.counts[d]}</span>
           </span>

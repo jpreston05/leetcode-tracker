@@ -1,81 +1,125 @@
-# Design — "Evening Logbook"
+# Design — "Bright Logbook"
 
-A committed dark theme for lamp-lit review sessions. Calm, disciplined,
-data-forward: a well-kept training logbook, not a productivity toy.
-Register: product. Color strategy: restrained (olive accent ≤10% of surface).
+Fresh, playful, encouraging: a tracker you want to open. Register: product.
+Color strategy: **full palette** — seven named roles, each with one job.
+Light and dark themes, both first-class.
 
 ## Theme
 
-Dark only. `color-scheme: dark`. Near-black neutral base; surfaces step up
-through faintly olive-tinted layers. The mood lives in the accent and the
-typography, not in tinted backgrounds.
+`.dark` class on `<html>`, set before first paint by `THEME_SCRIPT`
+(`src/lib/theme.ts`, inlined in `layout.tsx`): an explicit choice in
+`localStorage.theme` wins, otherwise the OS preference. `ThemeToggle` (nav)
+flips and persists it, and follows live OS changes until the user chooses.
+Tailwind's `dark:` variant is wired to the class (`@custom-variant dark`).
 
-## Color (OKLCH, tokens in `src/app/globals.css` `@theme`)
+- **Light:** near-white canvas with a breath of teal (`oklch(0.982 0.006 200)`),
+  white cards with a soft coloured shadow. Never cream/beige.
+- **Dark:** deep ink-navy (`oklch(0.2 0.03 250)`), so the colours glow rather
+  than sit on a void. Never near-black.
 
-| Token | Value | Role |
+## Color (OKLCH, `src/app/globals.css`)
+
+Raw values live in `:root` / `:root.dark` as plain CSS variables; `@theme
+inline` maps them to Tailwind colours, so `bg-sky-soft`, `text-grape-ink`,
+`bg-coral/10` etc. all switch with the theme.
+
+Neutrals: `canvas` (page), `surface` (cards, inputs), `raised` (hover,
+empty tracks), `line` / `line-strong`, `ink` / `muted` / `faint` (text),
+`on-fill` (dark text on any bright fill). Don't name a token `base`: it
+collides with Tailwind's `text-base` size.
+
+| Role | Hue | Job |
 |---|---|---|
-| `base` | `oklch(0.125 0 0)` | page background (pure neutral) |
-| `surface` | `oklch(0.17 0.005 110)` | cards, inputs, emphasized containers |
-| `raised` | `oklch(0.21 0.007 110)` | hover fills, empty heatmap cells, second layer |
-| `line` / `line-strong` | `oklch(0.28/0.36 …)` | borders, dividers |
-| `ink` | `oklch(0.93 0.012 110)` | primary text (≈14:1 on base) |
-| `muted` | `oklch(0.68 0.018 110)` | secondary text, placeholders (≥4.5:1) |
-| `faint` | `oklch(0.58 0.014 110)` | tertiary/data labels (≥4.5:1, use sparingly) |
-| `olive` | `oklch(0.74 0.13 115)` | THE accent: primary buttons, progress, due-now, success |
-| `on-olive` | `oklch(0.15 0.02 115)` | text on olive fills (Spotify-style dark-on-bright) |
-| `terra` | `oklch(0.68 0.12 50)` | warm counterpoint: Medium difficulty, "struggled" |
-| `danger` | `oklch(0.64 0.16 27)` | overdue, Hard difficulty, "failed" |
-| `heat1–4` | olive ramp `L 0.32→0.74` | heatmap intensity (0 = `raised`) |
+| `brand` (lagoon) | 190 | primary buttons, links, focus, active nav |
+| `sun` | 95 | new problems |
+| `sky` | 240 | reviews, due badges |
+| `grape` | 305 | retired, milestones |
+| `mint` | 160 | Clean grade, Easy, success |
+| `amber` | 62 | Shaky grade, Medium, streak chip |
+| `coral` | 25 | Failed grade, Hard, overdue, errors (`danger`) |
 
-Semantic rule: outcome/difficulty color always accompanies a written word —
-never color alone.
+Each role has four steps:
+
+- `<role>` — **fill**: solid chips/buttons/dots, always with `text-on-fill`.
+- `<role>-ink` — **text** on canvas/surface/raised/its soft (≥4.5:1, both themes).
+- `<role>-soft` — **tint** for chips and tinted cards.
+- `<role>-mark` — **chart/progress marks** (≥3:1 vs surface). In light theme
+  these are deeper than the fills (pastel fills fail 3:1 on white); in dark
+  they equal the fills. Difficulty marks alias: `easy/medium/hard-mark`.
+
+`heat1–4`: lagoon ramp for the heatmap and topic bars.
+Rule: colour never stands alone — a word, ✓ or label always accompanies it.
+Re-verify contrast after any token change (both themes).
 
 ## Typography
 
-- **Geist Sans** for everything; **Geist Mono** (`.data` class) for every
-  number, date, and count that should align — tabular-nums, zero tracking.
-- Fixed rem scale: `xs 0.75 / sm 0.875 / base 1 / 2xl 1.5` (titles
-  `text-2xl font-semibold tracking-tight`). Body 1rem, line-height 1.6,
-  letter-spacing 0.01em (light-on-dark compensation).
+- **Figtree** (`--font-figtree`) for all UI: friendly rounded terminals.
+  Headings `font-extrabold tracking-tight` (page h1 `text-3xl`, dashboard
+  greeting up to `text-4xl`); section titles `font-bold`; labels
+  `font-semibold`.
+- **Geist Mono** (`.data`) for every number, date and count that should
+  align — tabular-nums.
 
 ## Shape & depth
 
-- Radius: `rounded-xl` (12px) containers, `rounded-lg` (8px) controls,
-  `rounded-full` rail segments and markers.
-- Depth via borders and surface steps, not shadows. No glassmorphism.
+- Radius: `rounded-3xl` hero/quote panels, `rounded-2xl` cards (`.card`),
+  `rounded-xl` inputs, `rounded-full` buttons, chips, bars.
+- Depth: `shadow-soft` on cards and buttons, `shadow-lift` on hover and
+  toasts (shadow colour is tinted per theme). No glassmorphism, except the
+  sticky nav's light backdrop blur.
+- Palette shapes (sun circle, sky pill, grape rounded square) are the
+  decorative language: brand mark, quote card, portfolio hero, empty
+  scenes, milestone card. Abstract shapes only — no stock illustration.
 
-## Signature motif — the Today queue
+## Signature — the Today queue
 
-The dashboard leads with a bounded queue (`TodayQueue.tsx`): new-problem
-slot(s) first, then at most 2 review cards (plus a "Try the next one" button once they are done) on a `border-line-strong` surface,
-then a quiet mono "+N more due". Grades always pair color with a word
-(Clean olive, Shaky terra, Failed danger — `gradeClass` in `ui.ts`). The nav
-wordmark keeps three pips (two filled olive, one hollow) as the brand mark.
+Dashboard order: greeting + streak chip → quote card (brand-soft, palette
+shapes) → **day plan bar** (chunky segments: sun per new slot, sky per
+review, filled as done) → Today queue (sun-tinted "Solve something new"
+slots, review cards with a sky "today" / coral "late" chip, "Try the next
+one →" after the 2 reviews, and "+ Log a different review" — a search
+picker for reviewing any problem off-list, which counts toward the day) → The 150 (stacked grape/sky bar) + this week's
+load → stats → activity.
 
-## Component vocabulary (in `globals.css @layer components`)
+## Celebrations (`CelebrationProvider` in the root layout)
 
-`.btn-primary` (olive fill), `.btn-secondary` (bordered surface),
-`.btn-ghost` (text), `.field` (inputs/selects/textareas), `.data`
-(mono/tabular). Focus: global 2px olive `:focus-visible` outline.
+| Moment | Trigger | Reward |
+|---|---|---|
+| Day plan complete | `DayProgressBar`, once per day (`localStorage`) | small confetti + 🎉 toast |
+| Problem retired | `LogAttemptForm` when the new attempt retires it | big confetti + 🎓 stamp toast |
+| Milestone (10, 25, 50, 75, 100, 125, 150 solved) | `MilestoneWatcher`, once each | big confetti + milestone `<dialog>` |
+| Clean grade | selecting Clean | sparkle ring on the button |
+| Streak | dashboard header | 🔥 chip; broken = "Start a new streak today" |
+
+Confetti (`canvas-confetti`, lazy-loaded, palette hex in `src/lib/confetti.ts`)
+is skipped under `prefers-reduced-motion`; the toast/dialog still shows.
+
+## Component vocabulary (`globals.css @layer components`)
+
+`.btn-primary` (lagoon fill pill), `.btn-secondary` (surface pill),
+`.btn-ghost`, `.field`, `.card`, `.chip` (+ `-soft` bg / `-ink` text; see
+`difficultyChip`, `gradeChip`, `statusChip` in `src/lib/ui.ts`), `.data`.
+Focus: global 2px `brand-ink` outline.
 
 ## Motion
 
-State-conveying only, 150–250ms ease-out (`transition-colors duration-150`).
-Inline forms (log attempt) enter with a 200ms fade + 4px rise via
-`starting:`. `prefers-reduced-motion`: all transitions collapse to instant.
+150–250ms, `--ease-strong`. State changes (fills, hovers, theme toggle
+sun↔moon rotate) plus the celebration set: `animate-toast-in`,
+`animate-stamp`, `animate-sparkle`. Hover lift on new-problem slots
+(`-translate-y-0.5` + `shadow-lift`). No page-load choreography.
+`prefers-reduced-motion`: everything collapses to instant.
 
 ## Charts
 
-Plain HTML/CSS marks, no chart library. Difficulty uses dedicated **mark
-tokens** (`easy-mark`/`medium-mark`/`hard-mark` — deeper steps of the text
-hues, validated for the dark surface: lightness band, monotonic-L CVD
-separation, ≥3:1 contrast). Identity is never color-alone: fixed
-Easy→Medium→Hard order, 2px surface gaps between segments, dot+ink-text
-legends with mono counts. Magnitude charts (week load, topic bars) are
-single-hue (`heat3`), with today's bar in `olive`. Values/labels always wear
-text tokens, never series colors. Tooltips via `title`.
+Plain HTML/CSS, no chart library. Marks use `*-mark` tokens (≥3:1 per
+theme). Identity never colour-alone: fixed Easy→Medium→Hard order, gaps
+between segments, dot + word legends with mono counts. Week load is
+single-hue sky; topic bars and heatmap use the lagoon ramp. Tooltips via
+`title`.
 
 ## Voice
 
-Terse, factual, evening-toned: "3 reviews due", "due tonight", "All clear
-tonight", "Add to logbook". No exclamation marks, no gamified nagging.
+Warm, encouraging, short. "Good evening, Jack", "Solve something new",
+"Reviews done. Lovely work.", "That's the day done!". Exclamation marks are
+for celebrations only. Never guilt: overdue says "3d late", not "overdue!";
+a lost streak says "Start a new streak today".

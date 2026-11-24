@@ -26,12 +26,14 @@ export default async function EditProblemPage({
       <AppNav />
       <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Edit problem</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">Edit problem</h1>
           <p className="mt-1 text-sm text-muted">
             Edit the solve date, time, and grade from the attempt history on the problem page.
           </p>
         </div>
-        <ProblemForm initial={question} />
+        <div className="card p-5 sm:p-7">
+          <ProblemForm initial={question} />
+        </div>
 
         <section className="mt-14 border-t border-line pt-8">
           <DeleteProblemButton questionId={question.id} />

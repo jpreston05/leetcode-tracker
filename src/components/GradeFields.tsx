@@ -3,10 +3,12 @@
 import { CLEAN_MAX_MINUTES } from "@/lib/schedule";
 import { GRADES, type Grade } from "@/lib/types";
 
-const gradeButton: Record<Grade, string> = {
-  clean: "border-olive/50 text-olive hover:bg-olive/10 aria-pressed:bg-olive/15",
-  shaky: "border-terra/50 text-terra hover:bg-terra/10 aria-pressed:bg-terra/15",
-  failed: "border-danger/50 text-danger hover:bg-danger/10 aria-pressed:bg-danger/15",
+// Unselected: soft tint + ink. Selected: the solid fill, dark text, and for
+// Clean a little sparkle burst.
+const gradeButton: Record<Grade, { idle: string; picked: string; emoji: string }> = {
+  clean: { idle: "bg-mint-soft text-mint-ink hover:brightness-[0.97]", picked: "bg-mint text-on-fill animate-sparkle", emoji: "✨" },
+  shaky: { idle: "bg-amber-soft text-amber-ink hover:brightness-[0.97]", picked: "bg-amber text-on-fill", emoji: "😅" },
+  failed: { idle: "bg-coral-soft text-coral-ink hover:brightness-[0.97]", picked: "bg-coral text-on-fill", emoji: "🧩" },
 };
 
 /**
@@ -35,7 +37,7 @@ export default function GradeFields({
 
   return (
     <div className="flex flex-col gap-4">
-      <label className="flex max-w-40 flex-col gap-1.5 text-sm text-muted">
+      <label className="flex max-w-40 flex-col gap-1.5 text-sm font-semibold text-muted">
         Time taken (min)
         <input
           name="minutes"
@@ -49,7 +51,7 @@ export default function GradeFields({
       </label>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-sm text-muted">Grade</legend>
+        <legend className="mb-1.5 text-sm font-semibold text-muted">How did it go?</legend>
         <div className="flex flex-wrap gap-2">
           {GRADES.map(({ value, label, hint }) => {
             const disabled = value === "clean" && tooSlow;
@@ -61,15 +63,15 @@ export default function GradeFields({
                 disabled={disabled}
                 title={hint}
                 onClick={() => onGradeChange(value)}
-                className={`btn border ${gradeButton[value]} disabled:cursor-not-allowed disabled:opacity-40`}
+                className={`btn ${grade === value ? gradeButton[value].picked : gradeButton[value].idle} disabled:cursor-not-allowed disabled:opacity-40`}
               >
-                {grade === value ? "✓ " : ""}
+                <span aria-hidden>{grade === value ? "✓" : gradeButton[value].emoji}</span>
                 {label}
               </button>
             );
           })}
         </div>
-        <p className="text-xs text-faint">
+        <p className="text-xs text-muted">
           {tooSlow
             ? `Over ${CLEAN_MAX_MINUTES} min can't be Clean.`
             : GRADES.find((g) => g.value === grade)?.hint ?? "Pick how it went."}

@@ -1,10 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree, Geist_Mono } from "next/font/google";
+import CelebrationProvider from "@/components/CelebrationProvider";
 import SiteFooter from "@/components/SiteFooter";
+import { THEME_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Figtree: friendly, rounded-terminal sans for all UI; Geist Mono keeps
+// numbers and dates lining up.
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -29,7 +33,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#1a1a1a",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8fbfb" },
+    { media: "(prefers-color-scheme: dark)", color: "#141c2b" },
+  ],
 };
 
 export default function RootLayout({
@@ -38,13 +45,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // the theme script toggles .dark before React hydrates, hence the suppression
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${figtree.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        {children}
-        <SiteFooter />
+        <CelebrationProvider>
+          {children}
+          <SiteFooter />
+        </CelebrationProvider>
       </body>
     </html>
   );

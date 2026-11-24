@@ -33,16 +33,22 @@ export interface DayProgress {
   done: number;
   total: number; // the day's plan: new slots + planned reviews (normally 3)
   extra: number; // reviews beyond the plan, via "Try the next one"
+  segments: { kind: "new" | "review"; done: boolean }[]; // new slots first, then reviews
 }
 
 /** How far through today's plan you are. */
 export function todayProgress(queue: TodayQueue<QueueProblem>): DayProgress {
   const plannedReviews = Math.min(MAX_DAILY_REVIEWS, queue.due.length + queue.reviewedToday);
   const reviewsDone = Math.min(queue.reviewedToday, plannedReviews);
+  const segments = [
+    ...Array.from({ length: queue.newSlots }, (_, i) => ({ kind: "new" as const, done: i < queue.newSlotsFilled })),
+    ...Array.from({ length: plannedReviews }, (_, i) => ({ kind: "review" as const, done: i < reviewsDone })),
+  ];
   return {
     done: queue.newSlotsFilled + reviewsDone,
     total: queue.newSlots + plannedReviews,
     extra: queue.reviewedToday - reviewsDone,
+    segments,
   };
 }
 

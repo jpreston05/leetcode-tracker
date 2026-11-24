@@ -1,5 +1,6 @@
-// Next 7 days of review load: labeled mini columns, single hue (magnitude),
-// today emphasized in the accent. The counts are the data; bars are the shape.
+// Next 7 days of review load: labeled mini columns in the review hue (sky),
+// one colour for magnitude; today is called out by its bold label. The counts
+// are the data; bars are the shape.
 export default function WeekLoadStrip({ load }: { load: { date: string; count: number }[] }) {
   const max = Math.max(...load.map((d) => d.count), 1);
 
@@ -18,19 +19,15 @@ export default function WeekLoadStrip({ load }: { load: { date: string; count: n
             <div className="flex h-14 w-full items-end">
               {count > 0 ? (
                 <div
-                  className={`w-full rounded-sm transition-colors duration-150 ${
-                    i === 0
-                      ? "bg-olive group-hover:bg-olive-bright"
-                      : "bg-heat3 group-hover:bg-heat4"
-                  }`}
+                  className="w-full rounded-lg bg-sky-mark transition-[filter] duration-150 group-hover:brightness-110"
                   style={{ height: `${Math.max((count / max) * 100, 12)}%` }}
                 />
               ) : (
-                <div className="h-0.5 w-full rounded-sm bg-raised transition-colors duration-150 group-hover:bg-line" />
+                <div className="h-1 w-full rounded-full bg-raised transition-colors duration-150 group-hover:bg-line" />
               )}
             </div>
             <span className={`data text-xs ${count > 0 ? "text-ink" : "text-faint"}`}>{count}</span>
-            <span className={`data text-[10px] ${i === 0 ? "text-olive" : "text-faint"}`}>
+            <span className={`data text-[10px] ${i === 0 ? "font-bold text-brand-ink" : "text-faint"}`}>
               {label}
             </span>
           </div>

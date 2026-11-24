@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import AppNav from "@/components/AppNav";
+import BrandMark from "@/components/BrandMark";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -23,14 +24,9 @@ export default function LoginPage() {
       <AppNav />
       <main className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-16">
         <div className="flex flex-col items-center gap-4">
-          <span aria-hidden className="flex items-center gap-1">
-            <span className="h-2 w-5 rounded-full bg-olive" />
-            <span className="h-2 w-5 rounded-full bg-olive" />
-            <span className="h-2 w-5 rounded-full bg-olive/25 ring-1 ring-olive ring-inset" />
-            <span className="h-2 w-5 rounded-full bg-raised ring-1 ring-line-strong ring-inset" />
-          </span>
+          <BrandMark size="lg" />
           <div className="text-center">
-            <h1 className="text-xl font-semibold tracking-tight">LeetCode Tracker</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">LeetCode Tracker</h1>
             <p className="mt-1 text-sm text-muted">Owner sign-in. Viewing is open to everyone.</p>
           </div>
         </div>

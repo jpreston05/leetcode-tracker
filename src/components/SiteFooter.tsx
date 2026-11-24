@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BrandMark from "@/components/BrandMark";
 import { createClient } from "@/lib/supabase/server";
 
 // Site-wide footer. Doubles as the ownership signal: this is Jeff's personal
@@ -11,9 +12,11 @@ export default async function SiteFooter() {
   } = await supabase.auth.getUser();
 
   return (
-    <footer className="border-t border-line">
+    <footer className="mt-10 border-t border-line">
       <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-faint sm:px-6">
-        <span>Personal tracker · J. Preston</span>
+        <span className="flex items-center gap-2">
+          <BrandMark /> Personal tracker · J. Preston
+        </span>
         {!user && (
           <Link
             href="/login"
