@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildHistory, computeSchedule } from "./schedule";
+import { buildHistory, computeSchedule, type Schedule } from "./schedule";
 import type { Attempt, Grade, ScheduleEvent } from "./types";
 
 // Data access for attempts + schedule events. Every write ends with
@@ -14,8 +14,8 @@ export interface AttemptValues {
   notes: string | null;
 }
 
-/** Replays a question's history and writes the derived schedule back. */
-export async function recomputeQuestion(supabase: SupabaseClient, questionId: string) {
+/** Replays a question's history, writes the derived schedule back, and returns it. */
+export async function recomputeQuestion(supabase: SupabaseClient, questionId: string): Promise<Schedule | null> {
   const [questionRes, attemptsRes, eventsRes] = await Promise.all([
     supabase.from("questions").select("confidence").eq("id", questionId).single<{ confidence: number }>(),
     supabase
@@ -34,7 +34,7 @@ export async function recomputeQuestion(supabase: SupabaseClient, questionId: st
 
   const history = buildHistory(attemptsRes.data ?? [], eventsRes.data ?? []);
   const schedule = computeSchedule(history, questionRes.data!.confidence);
-  if (!schedule) return; // no attempts: nothing to schedule
+  if (!schedule) return null; // no attempts: nothing to schedule
 
   const firstSolve = history.find((h) => h.type === "attempt")!.date;
   const { error: updateError } = await supabase
@@ -47,12 +47,14 @@ export async function recomputeQuestion(supabase: SupabaseClient, questionId: st
     })
     .eq("id", questionId);
   if (updateError) throw updateError;
+  return schedule;
 }
 
+/** Logs an attempt; returns the new schedule (so the UI can celebrate a retirement). */
 export async function logAttempt(supabase: SupabaseClient, questionId: string, values: AttemptValues) {
   const { error } = await supabase.from("attempts").insert({ question_id: questionId, ...values });
   if (error) throw error;
-  await recomputeQuestion(supabase, questionId);
+  return recomputeQuestion(supabase, questionId);
 }
 
 export async function updateAttempt(

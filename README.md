@@ -13,7 +13,7 @@ below).
 Auth) · Tailwind 4 · Vitest
 
 Design language lives in [PRODUCT.md](PRODUCT.md) and [DESIGN.md](DESIGN.md)
-("Evening Logbook": dark-only, OKLCH tokens, plain HTML/CSS charts).
+("Bright Logbook": light + dark themes, a colour per role, celebrations, plain HTML/CSS charts).
 
 ## What it does
 

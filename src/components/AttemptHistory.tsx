@@ -7,7 +7,7 @@ import { deleteAttempt } from "@/lib/attempts";
 import { formatShort } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/client";
 import { GRADES, type Attempt } from "@/lib/types";
-import { gradeClass } from "@/lib/ui";
+import { gradeChip } from "@/lib/ui";
 
 const linkClass =
   "text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink";
@@ -19,9 +19,11 @@ const actionClass = "text-xs text-faint underline-offset-2 hover:text-ink hover:
  */
 export default function AttemptHistory({
   questionId,
+  title,
   attempts,
 }: {
   questionId: string;
+  title: string;
   attempts: Attempt[];
 }) {
   const router = useRouter();
@@ -45,22 +47,32 @@ export default function AttemptHistory({
 
   return (
     <div>
-      <ol className="flex flex-col">
+      {/* a timeline: one dot per attempt, sun for the first solve, sky for reviews */}
+      <ol className="relative flex flex-col">
+        <span aria-hidden className="absolute top-3 bottom-3 left-[7px] w-0.5 rounded-full bg-line" />
         {attempts.map((attempt, i) => (
-          <li key={attempt.id} className="border-b border-line py-3 last:border-b-0">
+          <li key={attempt.id} className="relative py-2.5 pl-7">
+            <span
+              aria-hidden
+              className={`absolute top-[15px] left-0 h-4 w-4 rounded-full border-[3px] border-surface ${
+                i === 0 ? "bg-sun-mark" : "bg-sky-mark"
+              }`}
+            />
             {editingId === attempt.id ? (
-              <LogAttemptForm questionId={questionId} initial={attempt} onDone={() => setEditingId(null)} />
+              <div className="rounded-2xl bg-raised/60 p-4">
+                <LogAttemptForm questionId={questionId} title={title} initial={attempt} onDone={() => setEditingId(null)} />
+              </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
-                  <span className="data text-muted">{formatShort(attempt.attempted_on)}</span>
-                  <span className="text-xs text-faint">{i === 0 ? "first solve" : `review ${i}`}</span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="data font-semibold">{formatShort(attempt.attempted_on)}</span>
+                  <span className="text-xs text-muted">{i === 0 ? "first solve" : `review ${i}`}</span>
                   {attempt.grade ? (
-                    <span className={`font-medium ${gradeClass[attempt.grade]}`}>
+                    <span className={gradeChip[attempt.grade]}>
                       {GRADES.find((g) => g.value === attempt.grade)!.label}
                     </span>
                   ) : (
-                    <span className="text-faint">ungraded</span>
+                    <span className="chip bg-raised text-muted">ungraded</span>
                   )}
                   {attempt.minutes !== null && <span className="data text-muted">{attempt.minutes} min</span>}
                   {attempt.solution_url && (
@@ -93,10 +105,12 @@ export default function AttemptHistory({
 
       <div className="mt-4">
         {adding ? (
-          <LogAttemptForm questionId={questionId} onDone={() => setAdding(false)} />
+          <div className="rounded-2xl bg-raised/60 p-4">
+            <LogAttemptForm questionId={questionId} title={title} onDone={() => setAdding(false)} />
+          </div>
         ) : (
-          <button onClick={() => setAdding(true)} className="btn-secondary">
-            Log attempt
+          <button onClick={() => setAdding(true)} className="btn-primary">
+            + Log attempt
           </button>
         )}
       </div>

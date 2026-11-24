@@ -7,11 +7,11 @@ import PhotoUpload from "@/components/PhotoUpload";
 import ScheduleEventButton from "@/components/ScheduleEventButton";
 import { createClient } from "@/lib/supabase/server";
 import { daysUntil, formatShort, todayISO } from "@/lib/dates";
-import { difficultyClass, gradeClass } from "@/lib/ui";
+import { difficultyChip, gradeChip, statusChip } from "@/lib/ui";
 import { GRADES, type Attempt, type NotePhoto, type PublicAttempt, type PublicQuestion, type Question } from "@/lib/types";
 
 const linkClass =
-  "text-muted underline decoration-line-strong underline-offset-4 transition-colors duration-150 hover:text-ink";
+  "font-semibold text-brand-ink underline decoration-brand/40 underline-offset-4 transition-colors duration-150 hover:decoration-brand-ink";
 
 export default async function ProblemDetailPage({
   params,
@@ -60,13 +60,11 @@ export default async function ProblemDetailPage({
     <>
       <AppNav isOwner />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-        <div className="mb-10">
-          <p className="data mb-1 text-sm text-faint">#{question.leetcode_number}</p>
-          <h1 className="mb-3 text-2xl font-semibold tracking-tight text-balance">
-            {question.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-            <span className={difficultyClass[question.difficulty]}>{question.difficulty}</span>
+        <div className="mb-8">
+          <p className="data mb-1 text-sm text-muted">#{question.leetcode_number}</p>
+          <h1 className="mb-3 text-3xl font-extrabold tracking-tight">{question.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
+            <span className={difficultyChip[question.difficulty]}>{question.difficulty}</span>
             <span>{question.topic}</span>
             <span>
               confidence <span className="data">{question.confidence}/5</span>
@@ -88,8 +86,8 @@ export default async function ProblemDetailPage({
           </div>
         </div>
 
-        <section className="mb-12 rounded-xl border border-line bg-surface p-5">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <section className="card mb-10 p-5 sm:p-6">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
             <StatusLine question={question} today={today} />
             {question.retired_on ? (
               <ScheduleEventButton questionId={question.id} kind="unretire" />
@@ -98,19 +96,19 @@ export default async function ProblemDetailPage({
               question.next_due <= today && <ScheduleEventButton questionId={question.id} kind="defer" />
             )}
           </div>
-          <h2 className="mb-1 text-sm font-medium text-muted">Attempts</h2>
-          <AttemptHistory questionId={question.id} attempts={attempts ?? []} />
+          <h2 className="mb-2 font-bold">Attempts</h2>
+          <AttemptHistory questionId={question.id} title={question.title} attempts={attempts ?? []} />
         </section>
 
         {question.notes && (
-          <section className="mb-12">
-            <h2 className="mb-2 text-sm font-medium text-muted">Notes</h2>
+          <section className="mb-10 rounded-2xl bg-sun-soft p-5">
+            <h2 className="mb-2 font-bold">Notes</h2>
             <p className="max-w-[65ch] text-sm whitespace-pre-wrap">{question.notes}</p>
           </section>
         )}
 
         <section className="mb-12">
-          <h2 className="mb-3 text-sm font-medium text-muted">Paper notes</h2>
+          <h2 className="mb-3 font-bold">Paper notes</h2>
           {gallery.length > 0 && (
             <div className="mb-4 flex flex-col gap-4">
               {gallery.map((photo, i) =>
@@ -122,7 +120,7 @@ export default async function ProblemDetailPage({
                       src={photo.url}
                       alt={`Handwritten notes for ${question.title}, page ${i + 1}`}
                       loading={i === 0 ? undefined : "lazy"}
-                      className="max-w-full rounded-xl border border-line"
+                      className="max-w-full rounded-2xl border border-line shadow-soft"
                     />
                     <figcaption className="mt-1.5 flex items-center justify-between">
                       <span className="data text-xs text-faint">
@@ -174,12 +172,10 @@ async function PublicDetail({ id }: { id: string }) {
       <AppNav />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-10">
-          <p className="data mb-1 text-sm text-faint">#{question.leetcode_number}</p>
-          <h1 className="mb-3 text-2xl font-semibold tracking-tight text-balance">
-            {question.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-            <span className={difficultyClass[question.difficulty]}>{question.difficulty}</span>
+          <p className="data mb-1 text-sm text-muted">#{question.leetcode_number}</p>
+          <h1 className="mb-3 text-3xl font-extrabold tracking-tight">{question.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
+            <span className={difficultyChip[question.difficulty]}>{question.difficulty}</span>
             <span>{question.topic}</span>
             <span>
               solved <span className="data">{formatShort(question.date_solved)}</span>
@@ -195,23 +191,23 @@ async function PublicDetail({ id }: { id: string }) {
           </div>
         </div>
 
-        <section className="mb-12 rounded-xl border border-line bg-surface p-5">
-          <p className="mb-4 text-sm">
-            <span className="font-medium">{question.retired ? "Retired" : "In review"}</span>
-            <span className="data ml-3 text-muted">
+        <section className="card mb-12 p-5 sm:p-6">
+          <p className="mb-4 flex items-center gap-3 text-sm">
+            <span className={question.retired ? statusChip.retired : statusChip.review}>
+              {question.retired ? "🎓 Retired" : "In review"}
+            </span>
+            <span className="data text-muted">
               {(attempts ?? []).length} attempt{(attempts ?? []).length === 1 ? "" : "s"}
             </span>
           </p>
           <ol className="flex flex-col">
             {(attempts ?? []).map((a) => (
-              <li key={a.seq} className="flex items-baseline gap-3 border-b border-line py-2 text-sm last:border-b-0">
-                <span className="w-20 text-xs text-faint">{a.seq === 1 ? "first solve" : `review ${a.seq - 1}`}</span>
+              <li key={a.seq} className="flex items-center gap-3 border-b border-line py-2.5 text-sm last:border-b-0">
+                <span className="w-20 text-xs text-muted">{a.seq === 1 ? "first solve" : `review ${a.seq - 1}`}</span>
                 {a.grade ? (
-                  <span className={`font-medium ${gradeClass[a.grade]}`}>
-                    {GRADES.find((g) => g.value === a.grade)!.label}
-                  </span>
+                  <span className={gradeChip[a.grade]}>{GRADES.find((g) => g.value === a.grade)!.label}</span>
                 ) : (
-                  <span className="text-faint">solved</span>
+                  <span className="chip bg-sun-soft text-sun-ink">solved</span>
                 )}
                 {a.solution_url && (
                   <a href={a.solution_url} target="_blank" rel="noreferrer" className={`text-xs ${linkClass}`}>
@@ -236,10 +232,10 @@ async function PublicDetail({ id }: { id: string }) {
 function StatusLine({ question, today }: { question: Question; today: string }) {
   if (question.retired_on) {
     return (
-      <p className="text-sm">
-        <span className="font-medium text-olive">Retired</span>
-        <span className="ml-3 text-muted">
-          on <span className="data">{formatShort(question.retired_on)}</span>
+      <p className="flex flex-wrap items-center gap-3 text-sm">
+        <span className={`${statusChip.retired} text-sm`}>🎓 Retired</span>
+        <span className="text-muted">
+          on <span className="data">{formatShort(question.retired_on)}</span>. It&apos;s out of the queue for good.
         </span>
       </p>
     );
@@ -249,12 +245,12 @@ function StatusLine({ question, today }: { question: Question; today: string }) 
   }
   const d = daysUntil(question.next_due, today);
   return (
-    <p className="text-sm">
-      <span className="font-medium">In review</span>
-      <span className="ml-3 text-muted">
-        next due <span className="data">{formatShort(question.next_due)}</span>
-        {d < 0 && <span className="data ml-2 text-danger">{-d}d overdue</span>}
-        {d === 0 && <span className="ml-2 text-olive">today</span>}
+    <p className="flex flex-wrap items-center gap-3 text-sm">
+      <span className={`${statusChip.review} text-sm`}>In review</span>
+      <span className="text-muted">
+        next due <span className="data font-semibold text-ink">{formatShort(question.next_due)}</span>
+        {d < 0 && <span className={`data ml-2 ${statusChip.overdue}`}>{-d}d late</span>}
+        {d === 0 && <span className={`ml-2 ${statusChip.dueToday}`}>today</span>}
         {question.interval_days !== null && (
           <span className="data ml-2 text-faint">· {question.interval_days}-day gap</span>
         )}

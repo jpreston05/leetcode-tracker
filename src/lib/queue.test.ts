@@ -63,18 +63,25 @@ describe("todayProgress", () => {
     todayProgress(buildTodayQueue(Array.from({ length: due }, () => p(TODAY)), TODAY, solved, reviewed));
 
   it("a normal day is 1 new + 2 reviews", () => {
-    expect(progressFor(5, 0, 0)).toEqual({ done: 0, total: 3, extra: 0 });
+    expect(progressFor(5, 0, 0)).toMatchObject({ done: 0, total: 3, extra: 0 });
   });
   it("fills as the new solve and reviews are logged", () => {
-    expect(progressFor(4, 1, 1)).toEqual({ done: 2, total: 3, extra: 0 });
-    expect(progressFor(3, 1, 2)).toEqual({ done: 3, total: 3, extra: 0 });
+    expect(progressFor(4, 1, 1)).toMatchObject({ done: 2, total: 3, extra: 0 });
+    expect(progressFor(3, 1, 2)).toMatchObject({ done: 3, total: 3, extra: 0 });
   });
   it("counts reviews past the plan as extra, not as a bigger bar", () => {
-    expect(progressFor(2, 1, 3)).toEqual({ done: 3, total: 3, extra: 1 });
+    expect(progressFor(2, 1, 3)).toMatchObject({ done: 3, total: 3, extra: 1 });
+  });
+  it("lists new segments first, then reviews, each marked done", () => {
+    expect(progressFor(4, 1, 1).segments).toEqual([
+      { kind: "new", done: true },
+      { kind: "review", done: true },
+      { kind: "review", done: false },
+    ]);
   });
   it("a light day is 2 new + whatever is due", () => {
-    expect(progressFor(0, 0, 0)).toEqual({ done: 0, total: 2, extra: 0 });
-    expect(progressFor(1, 1, 0)).toEqual({ done: 1, total: 3, extra: 0 });
+    expect(progressFor(0, 0, 0)).toMatchObject({ done: 0, total: 2, extra: 0 });
+    expect(progressFor(1, 1, 0)).toMatchObject({ done: 1, total: 3, extra: 0 });
   });
 });
 

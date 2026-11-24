@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppNav from "@/components/AppNav";
+import EmptyScene from "@/components/EmptyScene";
 import ProblemsList, { type ProblemListRow } from "@/components/ProblemsList";
 import { createClient } from "@/lib/supabase/server";
 import { todayISO } from "@/lib/dates";
@@ -65,8 +66,8 @@ export default async function ProblemsPage({
       <AppNav isOwner={isOwner} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <div className="mb-6 flex items-baseline gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Problems</h1>
-          {rows.length > 0 && <span className="data text-sm text-faint">{rows.length}</span>}
+          <h1 className="text-3xl font-extrabold tracking-tight">Problems</h1>
+          {rows.length > 0 && <span className="chip data bg-brand-soft text-brand-ink">{rows.length}</span>}
         </div>
 
         <form action="/problems" className="mb-6 flex flex-wrap items-center gap-3">
@@ -81,7 +82,7 @@ export default async function ProblemsPage({
           {topic && (
             <>
               <input type="hidden" name="topic" value={topic} />
-              <span className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pr-2 pl-3 text-xs">
+              <span className="flex items-center gap-2 rounded-full bg-brand-soft py-1 pr-2 pl-3 text-xs font-semibold text-brand-ink">
                 <span className="text-muted">topic:</span> {topic}
                 <Link
                   href={q?.trim() ? `/problems?q=${encodeURIComponent(q)}` : "/problems"}
@@ -107,15 +108,11 @@ export default async function ProblemsPage({
               </Link>
             </p>
           ) : isOwner ? (
-            <div className="rounded-xl border border-line px-6 py-10 text-center">
-              <p className="mb-1 text-sm font-medium">The logbook is empty</p>
-              <p className="mb-5 text-sm text-muted">
-                Every problem you add gets reviewed until you can solve it cleanly after three weeks away.
-              </p>
-              <Link href="/problems/new" className="btn-primary">
-                Add your first solve
-              </Link>
-            </div>
+            <EmptyScene
+              title="The logbook is empty"
+              body="Every problem you add gets reviewed until you can solve it cleanly after three weeks away."
+              action={{ href: "/problems/new", label: "Add your first solve" }}
+            />
           ) : (
             <p className="text-sm text-muted">No problems logged yet.</p>
           ))}

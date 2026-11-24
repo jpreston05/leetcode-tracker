@@ -1,15 +1,17 @@
-import Link from "next/link";
 import ActivityHeatmap from "@/components/ActivityHeatmap";
 import AppNav from "@/components/AppNav";
 import DayProgressBar from "@/components/DayProgressBar";
+import EmptyScene from "@/components/EmptyScene";
 import DifficultySplitBar from "@/components/DifficultySplitBar";
+import MilestoneWatcher from "@/components/MilestoneWatcher";
+import OverallProgress from "@/components/OverallProgress";
 import PortfolioHero from "@/components/PortfolioHero";
 import StatsRow from "@/components/StatsRow";
 import TodayQueue, { type QueueRow } from "@/components/TodayQueue";
 import TopicCoverage from "@/components/TopicCoverage";
 import WeekLoadStrip from "@/components/WeekLoadStrip";
 import { recomputeQuestion } from "@/lib/attempts";
-import { daysUntil, todayISO } from "@/lib/dates";
+import { computeStreaks, daysUntil, greetingFor, nzHour, todayISO } from "@/lib/dates";
 import { buildTodayQueue, todayProgress } from "@/lib/queue";
 import { QUOTES } from "@/lib/quotes";
 import {
@@ -24,7 +26,7 @@ import {
   type DayActivity,
 } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
-import type { Attempt, PublicAttempt, PublicQuestion, Question } from "@/lib/types";
+import { TOTAL_PROBLEMS, type Attempt, type PublicAttempt, type PublicQuestion, type Question } from "@/lib/types";
 
 type DashboardQuestion = QueueRow & Pick<Question, "date_solved">;
 type StatAttempt = Pick<Attempt, "question_id" | "grade" | "attempted_on" | "created_at">;
@@ -80,92 +82,136 @@ export default async function HomePage() {
   const load = weekLoad(questions, today);
   const record = maxActivityDay(activity);
 
+  const streak = computeStreaks(
+    activity.filter((a) => a.total > 0).map((a) => a.day),
+    today
+  );
+
   return (
     <>
       <AppNav isOwner />
+      <MilestoneWatcher solved={overall.solved} total={overall.total} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
-        <div className="mb-10">
-          <p className="data mb-1 text-sm text-faint">
-            {new Date(`${today}T12:00:00`).toLocaleDateString("en-NZ", {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight text-balance">
+        <header className="mb-8">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <p className="data text-sm text-muted">
+              {new Date(`${today}T12:00:00`).toLocaleDateString("en-NZ", {
+                weekday: "long",
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+            <StreakChip current={streak.current} longest={streak.longest} />
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{greetingFor(nzHour())}, Jack</h1>
+          <p className="mt-2 text-muted">
             {dueCount === 0
               ? reviewedToday > 0
-                ? "Today's reviews are done"
-                : "No reviews due today"
-              : `${dueCount} review${dueCount === 1 ? "" : "s"} due`}
-          </h1>
-          <p className="data mt-2 text-sm text-muted">
-            {overall.solved}/{overall.total} solved · {overall.inReview} in review · {overall.retired} retired
+                ? "Reviews are done for today. Nice."
+                : "No reviews due today, so it's a fresh-problem day."
+              : `${dueCount} review${dueCount === 1 ? "" : "s"} waiting, plus something new.`}
           </p>
-        </div>
-
-        <section className="mb-10 rounded-xl border border-line bg-surface px-6 py-5">
-          <p className="max-w-[40ch] text-lg font-medium tracking-tight text-balance">{quote}</p>
-          <p className="data mt-3 text-xs text-faint">
-            the Sydney plan{planDay !== null ? ` · day ${planDay}` : ""}
-          </p>
-        </section>
+        </header>
 
         {error && <p className="mb-8 text-sm text-danger">{error.message}</p>}
 
         {questions.length > 0 ? (
           <>
-            <div className="mb-6">
-              <DayProgressBar progress={todayProgress(queue)} />
-            </div>
-            <TodayQueue queue={queue} today={today} />
-            <section className="mt-10">
-              <h2 className="mb-4 text-sm font-medium text-muted">This week&apos;s load</h2>
-              <WeekLoadStrip load={load} />
+            <QuoteCard quote={quote} planDay={planDay} />
+            <section className="card mb-8 px-5 py-4">
+              <DayProgressBar progress={todayProgress(queue)} today={today} />
             </section>
+            <TodayQueue
+              queue={queue}
+              today={today}
+              allProblems={[...questions].sort((a, b) => a.leetcode_number - b.leetcode_number)}
+            />
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-2">
+              <section className="card px-5 py-5">
+                <h2 className="mb-4 font-bold">The 150</h2>
+                <OverallProgress progress={overall} />
+              </section>
+              <section className="card px-5 py-5">
+                <h2 className="mb-4 font-bold">Coming up this week</h2>
+                <WeekLoadStrip load={load} />
+              </section>
+            </div>
           </>
         ) : (
           !error && (
-            <div className="rounded-xl border border-line px-6 py-10 text-center">
-              <p className="mb-1 text-sm font-medium">Nothing logged yet</p>
-              <p className="mb-5 text-sm text-muted">
-                Log a solved problem and its first review is scheduled from how it went.
-              </p>
-              <Link href="/problems/new" className="btn-primary">
-                Add your first solve
-              </Link>
-            </div>
+            <EmptyScene
+              title="Your logbook is ready"
+              body="Log a problem you've solved and its first review gets scheduled from how it went."
+              action={{ href: "/problems/new", label: "Add your first solve" }}
+            />
           )
         )}
 
-        <section className="mt-14">
-          <h2 className="mb-4 text-sm font-medium text-muted">Stats</h2>
-          <StatsRow
-            mostInDay={record?.total ?? null}
-            problems={questions.length}
-            reviews={reviews.length}
-            cleanRate={cleanRate(reviews)}
-            retired={overall.retired}
-          />
-          {split.total > 0 && (
-            <div className="mt-8">
-              <DifficultySplitBar split={split} />
-            </div>
-          )}
-          {topics.length > 0 && (
-            <div className="mt-8">
-              <h3 className="mb-3 text-xs text-faint">Topics</h3>
-              <TopicCoverage topics={topics} />
-            </div>
-          )}
+        <section className="mt-12">
+          <h2 className="mb-4 font-bold">Stats</h2>
+          <div className="card px-5 py-5">
+            <StatsRow
+              mostInDay={record?.total ?? null}
+              problems={questions.length}
+              reviews={reviews.length}
+              cleanRate={cleanRate(reviews)}
+              retired={overall.retired}
+            />
+            {split.total > 0 && (
+              <div className="mt-8">
+                <DifficultySplitBar split={split} />
+              </div>
+            )}
+            {topics.length > 0 && (
+              <div className="mt-8">
+                <h3 className="mb-3 text-sm font-bold text-muted">Topics</h3>
+                <TopicCoverage topics={topics} />
+              </div>
+            )}
+          </div>
         </section>
 
-        <section className="mt-14">
-          <h2 className="mb-4 text-sm font-medium text-muted">Activity</h2>
-          <ActivityHeatmap rows={activity} today={today} />
+        <section className="mt-12">
+          <h2 className="mb-4 font-bold">Activity</h2>
+          <div className="card px-5 py-5">
+            <ActivityHeatmap rows={activity} today={today} />
+          </div>
         </section>
       </main>
     </>
+  );
+}
+
+function StreakChip({ current, longest }: { current: number; longest: number }) {
+  if (current > 0) {
+    return (
+      <span className="chip bg-amber-soft text-amber-ink" title={`Longest: ${longest} days`}>
+        <span aria-hidden>🔥</span>
+        <span className="data">{current}</span>-day streak
+      </span>
+    );
+  }
+  if (longest > 0) return <span className="chip bg-raised text-muted">Start a new streak today</span>;
+  return null;
+}
+
+function QuoteCard({ quote, planDay }: { quote: string; planDay: number | null }) {
+  return (
+    <section className="relative mb-6 overflow-hidden rounded-3xl bg-brand-soft px-6 py-6 sm:px-8">
+      {/* decorative palette shapes, tucked into the corner */}
+      <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 flex rotate-12 gap-2 opacity-90">
+        <span className="h-16 w-16 rounded-full bg-sun" />
+        <span className="mt-8 h-12 w-12 rounded-2xl bg-grape" />
+        <span className="mt-2 h-10 w-10 rounded-full bg-sky" />
+      </div>
+      <p className="relative max-w-[30ch] text-xl font-bold tracking-tight text-balance sm:text-2xl">
+        {quote}
+      </p>
+      <p className="data relative mt-3 text-xs text-brand-ink">
+        the Sydney plan{planDay !== null ? ` · day ${planDay}` : ""}
+      </p>
+    </section>
   );
 }
 
@@ -195,6 +241,13 @@ async function PublicHome() {
   const split = difficultySplit(questions);
   const topics = topicCoverageWithQuality(questions, reviews);
   const record = maxActivityDay(activity);
+  const retiredCount = questions.filter((q) => q.retired).length;
+  const overall = {
+    solved: questions.length,
+    inReview: questions.length - retiredCount,
+    retired: retiredCount,
+    total: TOTAL_PROBLEMS,
+  };
 
   return (
     <>
@@ -204,31 +257,40 @@ async function PublicHome() {
 
         {error && <p className="mb-8 text-sm text-danger">{error.message}</p>}
 
-        <section className="mt-4">
-          <h2 className="mb-4 text-sm font-medium text-muted">Progress</h2>
-          <StatsRow
-            mostInDay={record?.total ?? null}
-            problems={questions.length}
-            reviews={reviews.length}
-            cleanRate={cleanRate(reviews)}
-            retired={questions.filter((q) => q.retired).length}
-          />
-          {split.total > 0 && (
-            <div className="mt-8">
-              <DifficultySplitBar split={split} />
-            </div>
-          )}
-          {topics.length > 0 && (
-            <div className="mt-8">
-              <h3 className="mb-3 text-xs text-faint">Topics</h3>
-              <TopicCoverage topics={topics} />
-            </div>
-          )}
+        <section className="card mb-4 px-5 py-5">
+          <h2 className="mb-4 font-bold">The 150</h2>
+          <OverallProgress progress={overall} />
         </section>
 
-        <section className="mt-14">
-          <h2 className="mb-4 text-sm font-medium text-muted">Activity</h2>
-          <ActivityHeatmap rows={activity} today={today} />
+        <section className="mt-12">
+          <h2 className="mb-4 font-bold">Progress</h2>
+          <div className="card px-5 py-5">
+            <StatsRow
+              mostInDay={record?.total ?? null}
+              problems={questions.length}
+              reviews={reviews.length}
+              cleanRate={cleanRate(reviews)}
+              retired={overall.retired}
+            />
+            {split.total > 0 && (
+              <div className="mt-8">
+                <DifficultySplitBar split={split} />
+              </div>
+            )}
+            {topics.length > 0 && (
+              <div className="mt-8">
+                <h3 className="mb-3 text-sm font-bold text-muted">Topics</h3>
+                <TopicCoverage topics={topics} />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="mb-4 font-bold">Activity</h2>
+          <div className="card px-5 py-5">
+            <ActivityHeatmap rows={activity} today={today} />
+          </div>
         </section>
       </main>
     </>

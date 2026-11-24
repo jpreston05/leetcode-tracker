@@ -2,23 +2,30 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useCelebrate } from "@/components/CelebrationProvider";
 import GradeFields from "@/components/GradeFields";
 import { logAttempt, updateAttempt } from "@/lib/attempts";
 import { todayISO } from "@/lib/dates";
 import { createClient } from "@/lib/supabase/client";
 import type { Attempt, Grade } from "@/lib/types";
 
-/** Log a new attempt on a question, or edit an existing one (`initial`). */
+/**
+ * Log a new attempt on a question, or edit an existing one (`initial`).
+ * A new attempt that retires the problem gets a celebration.
+ */
 export default function LogAttemptForm({
   questionId,
+  title,
   initial,
   onDone,
 }: {
   questionId: string;
+  title: string;
   initial?: Attempt;
   onDone: () => void;
 }) {
   const router = useRouter();
+  const celebrate = useCelebrate();
   const [minutes, setMinutes] = useState(initial?.minutes?.toString() ?? "");
   const [grade, setGrade] = useState<Grade | null>(initial?.grade ?? null);
   const [busy, setBusy] = useState(false);
@@ -48,8 +55,14 @@ export default function LogAttemptForm({
 
     try {
       const supabase = createClient();
-      if (initial) await updateAttempt(supabase, initial, values);
-      else await logAttempt(supabase, questionId, values);
+      if (initial) {
+        await updateAttempt(supabase, initial, values);
+      } else {
+        const schedule = await logAttempt(supabase, questionId, values);
+        if (schedule?.retiredOn === values.attempted_on) {
+          celebrate({ tone: "retire", title: "Retired!", body: `${title} is locked in. It's out of your queue for good.` });
+        }
+      }
     } catch (err) {
       setError((err as { message?: string }).message ?? "Couldn't save the attempt.");
       setBusy(false);
@@ -64,7 +77,7 @@ export default function LogAttemptForm({
       onSubmit={handleSubmit}
       className="flex flex-col gap-4 transition-[opacity,transform] duration-200 ease-strong starting:translate-y-1 starting:opacity-0"
     >
-      <label className="flex max-w-48 flex-col gap-1.5 text-sm text-muted">
+      <label className="flex max-w-48 flex-col gap-1.5 text-sm font-semibold text-muted">
         Date
         <input
           name="attempted_on"
@@ -84,8 +97,8 @@ export default function LogAttemptForm({
         minutesRequired={!legacyMinutes}
       />
 
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
-        GitHub link <span className="text-faint">(optional)</span>
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
+        GitHub link <span className="font-normal text-faint">(optional)</span>
         <input
           name="solution_url"
           type="url"
@@ -95,8 +108,8 @@ export default function LogAttemptForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1.5 text-sm text-muted">
-        Notes <span className="text-faint">(optional)</span>
+      <label className="flex flex-col gap-1.5 text-sm font-semibold text-muted">
+        Notes <span className="font-normal text-faint">(optional)</span>
         <textarea
           name="notes"
           rows={2}

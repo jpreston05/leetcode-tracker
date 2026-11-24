@@ -5,8 +5,8 @@
 Private single-user spaced-repetition tracker for LeetCode problems (owner:
 jpreston05). Portfolio project — clarity over cleverness. Next.js App Router
 (TS, Tailwind 4) + hosted Supabase (Postgres/Storage/Auth, GitHub OAuth,
-signups disabled). Design language: PRODUCT.md + DESIGN.md ("Evening Logbook",
-dark-only, OKLCH tokens in `src/app/globals.css`).
+signups disabled). Design language: PRODUCT.md + DESIGN.md ("Bright Logbook":
+light + dark themes, full role palette, OKLCH tokens in `src/app/globals.css`).
 
 ## Commands
 
@@ -64,10 +64,17 @@ dark-only, OKLCH tokens in `src/app/globals.css`).
 - Data text wears `.data` (Geist Mono, tabular); color never carries meaning
   alone (words/icons accompany grade + difficulty colors — see
   `src/lib/ui.ts`).
-- Buttons/inputs use the `.btn-*` / `.field` classes from globals.css.
+- Buttons/inputs/containers use `.btn-*` / `.field` / `.card` / `.chip` from
+  globals.css. Colours come only from the role tokens (`<role>`, `-ink`,
+  `-soft`, `-mark`; see DESIGN.md) — never raw colours — so both themes work.
+  Check every UI change in light AND dark.
+- Theme: `.dark` on `<html>`, set pre-paint by `THEME_SCRIPT`
+  (`src/lib/theme.ts`); `<html>` has `suppressHydrationWarning` for it.
+- Celebrations go through `useCelebrate()` (`CelebrationProvider`, root
+  layout); confetti must stay reduced-motion-safe.
 - Charts are plain HTML/CSS with validated mark tokens (`*-mark` colors);
   read DESIGN.md's Charts section before adding any.
-- Motion: 150–250ms, `--ease-strong`, state-conveying only,
+- Motion: 150–250ms, `--ease-strong`, state + celebration only,
   `prefers-reduced-motion` collapse is global.
 
 ## Ops

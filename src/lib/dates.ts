@@ -66,3 +66,19 @@ export function computeStreaks(
 
   return { current, longest };
 }
+
+/** The current hour (0-23) on the NZ wall clock. */
+export function nzHour(): number {
+  return Number(
+    new Intl.DateTimeFormat("en-NZ", { timeZone: "Pacific/Auckland", hour: "numeric", hourCycle: "h23" }).format(
+      new Date()
+    )
+  );
+}
+
+export function greetingFor(hour: number): string {
+  if (hour < 5) return "Burning the midnight oil";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
