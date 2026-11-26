@@ -2,13 +2,21 @@
 export const MILESTONES = [10, 25, 50, 75, 100, 125, 150] as const;
 
 /**
- * The milestone to celebrate now: the highest one reached that hasn't been
- * celebrated yet. Only the highest, so a long gap never queues a string of
- * stale parties.
+ * The milestone to celebrate now: the highest one crossed today (solved count
+ * went from below it before today to at/above it now) that this browser
+ * hasn't already celebrated. Tying it to the day it was crossed means a fresh
+ * browser, device or preview URL (empty localStorage) never replays old
+ * milestones; `celebrated` only dedupes repeat visits on the same day.
  */
-export function milestoneToCelebrate(solved: number, celebrated: number[]): number | null {
-  const reached = MILESTONES.filter((m) => m <= solved);
-  const highest = reached.at(-1);
+export function milestoneToCelebrate(
+  solvedDates: string[],
+  today: string,
+  celebrated: number[]
+): number | null {
+  const solved = solvedDates.length;
+  const solvedBeforeToday = solvedDates.filter((d) => d < today).length;
+  const crossedToday = MILESTONES.filter((m) => solvedBeforeToday < m && m <= solved);
+  const highest = crossedToday.at(-1);
   if (highest === undefined || celebrated.includes(highest)) return null;
   return highest;
 }

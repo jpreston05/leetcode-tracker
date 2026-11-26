@@ -1,19 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { milestoneMessage, milestoneToCelebrate } from "./milestones";
 
+const TODAY = "2026-11-26";
+const days = (n: number, date: string) => Array<string>(n).fill(date);
+
 describe("milestoneToCelebrate", () => {
   it("is null below the first milestone", () => {
-    expect(milestoneToCelebrate(9, [])).toBeNull();
+    expect(milestoneToCelebrate(days(9, TODAY), TODAY, [])).toBeNull();
   });
-  it("celebrates a milestone exactly when reached", () => {
-    expect(milestoneToCelebrate(10, [])).toBe(10);
+  it("celebrates a milestone crossed today", () => {
+    expect(milestoneToCelebrate([...days(9, "2026-11-20"), TODAY], TODAY, [])).toBe(10);
   });
-  it("only celebrates the highest uncelebrated milestone", () => {
-    expect(milestoneToCelebrate(53, [])).toBe(50);
-    expect(milestoneToCelebrate(53, [10])).toBe(50);
+  it("never replays a milestone crossed on an earlier day, even with empty storage", () => {
+    expect(milestoneToCelebrate(days(12, "2026-11-20"), TODAY, [])).toBeNull();
+    expect(milestoneToCelebrate([...days(10, "2026-11-20"), TODAY], TODAY, [])).toBeNull();
   });
-  it("never repeats a celebrated milestone", () => {
-    expect(milestoneToCelebrate(60, [50])).toBeNull();
+  it("only celebrates the highest milestone crossed today", () => {
+    expect(milestoneToCelebrate([...days(8, "2026-11-20"), ...days(20, TODAY)], TODAY, [])).toBe(25);
+  });
+  it("doesn't repeat a milestone already celebrated today", () => {
+    expect(milestoneToCelebrate([...days(9, "2026-11-20"), TODAY], TODAY, [10])).toBeNull();
   });
 });
 
