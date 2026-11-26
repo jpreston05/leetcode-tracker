@@ -90,7 +90,7 @@ export default async function HomePage() {
   return (
     <>
       <AppNav isOwner />
-      <MilestoneWatcher solved={overall.solved} total={overall.total} />
+      <MilestoneWatcher solvedDates={questions.map((q) => q.date_solved)} today={today} total={overall.total} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
         <header className="mb-8">
           <div className="mb-2 flex flex-wrap items-center gap-2">

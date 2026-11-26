@@ -6,9 +6,19 @@ import { milestoneMessage, milestoneToCelebrate } from "@/lib/milestones";
 
 const KEY = "celebrated-milestones";
 
-/** Throws the milestone party once per milestone, the first time it's seen. */
-export default function MilestoneWatcher({ solved, total }: { solved: number; total: number }) {
+/** Throws the milestone party once, on the day the milestone is crossed. */
+export default function MilestoneWatcher({
+  solvedDates,
+  today,
+  total,
+}: {
+  solvedDates: string[];
+  today: string;
+  total: number;
+}) {
   const celebrate = useCelebrate();
+  // Stable dependency: a new array every render would re-run the effect.
+  const datesKey = solvedDates.join(",");
 
   useEffect(() => {
     let celebrated: number[] = [];
@@ -17,7 +27,8 @@ export default function MilestoneWatcher({ solved, total }: { solved: number; to
     } catch {
       // corrupt entry: treat as nothing celebrated
     }
-    const milestone = milestoneToCelebrate(solved, celebrated);
+    const dates = datesKey ? datesKey.split(",") : [];
+    const milestone = milestoneToCelebrate(dates, today, celebrated);
     if (milestone === null) return;
     localStorage.setItem(KEY, JSON.stringify([...celebrated, milestone]));
     celebrate({
@@ -25,7 +36,7 @@ export default function MilestoneWatcher({ solved, total }: { solved: number; to
       title: milestone >= total ? "You finished the 150!" : `${milestone} solved!`,
       body: milestoneMessage(milestone, total),
     });
-  }, [solved, total, celebrate]);
+  }, [datesKey, today, total, celebrate]);
 
   return null;
 }
