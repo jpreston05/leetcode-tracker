@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- BrandMark as a tab icon: new (sun) → review (sky) → retired (grape) on
+       the dark-theme surface, so it reads on light and dark browser chrome.
+       Hex values are the globals.css OKLCH tokens converted to sRGB. -->
+  <rect width="32" height="32" rx="7" fill="#12202f"/>
+  <circle cx="7" cy="16" r="3.75" fill="#f9d544"/>
+  <circle cx="16" cy="16" r="3.75" fill="#62bbf5"/>
+  <rect x="21.25" y="12.25" width="7.5" height="7.5" rx="2.6" fill="#b682ed"/>
+</svg>
