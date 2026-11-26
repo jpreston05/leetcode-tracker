@@ -17,8 +17,8 @@ export type QueueRow = Pick<
 
 /**
  * Today's work: new-problem slot(s) in sun, then up to 2 review cards in sky.
- * Once those are done, "Try the next one" raises the day's budget by one
- * review at a time. The budget is client state, so it survives the refresh
+ * Once those are done, "Solve another" / "Try the next one" let you keep
+ * going: one more new problem or review at a time. The budget is client state, so it survives the refresh
  * after each log.
  */
 export default function TodayQueue({
@@ -34,6 +34,7 @@ export default function TodayQueue({
   const [allowance, setAllowance] = useState(MAX_DAILY_REVIEWS);
   const reviews = reviewsToShow(queue.due, allowance, queue.reviewedToday);
   const moreDue = queue.due.length - reviews.length;
+  const bonusSolves = queue.solvedToday - queue.newSlotsFilled;
 
   return (
     <div className="flex flex-col gap-8">
@@ -75,6 +76,16 @@ export default function TodayQueue({
             )
           )}
         </ul>
+        {queue.newSlotsFilled >= queue.newSlots && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="data text-xs text-muted">
+              {bonusSolves > 0 ? `+${bonusSolves} bonus today` : "Slots done · got another in you?"}
+            </p>
+            <Link href="/problems/new" className="btn-secondary">
+              Solve another →
+            </Link>
+          </div>
+        )}
       </section>
 
       <section>
