@@ -11,7 +11,8 @@ export interface TodayQueue<P extends QueueProblem> {
   moreDue: number; // due but not shown
   reviewedToday: number;
   newSlots: number; // 1, or 2 on a light review day
-  newSlotsFilled: number; // first solves already logged today
+  newSlotsFilled: number; // first solves already logged today, capped at newSlots
+  solvedToday: number; // all first solves today, including bonus ones past the slots
 }
 
 /** Active problems due on or before today, most overdue first. */
@@ -32,7 +33,7 @@ export function reviewsToShow<P>(due: P[], allowance: number, reviewedToday: num
 export interface DayProgress {
   done: number;
   total: number; // the day's plan: new slots + planned reviews (normally 3)
-  extra: number; // reviews beyond the plan, via "Try the next one"
+  extra: number; // bonus work beyond the plan: "Solve another" + "Try the next one"
   segments: { kind: "new" | "review"; done: boolean }[]; // new slots first, then reviews
 }
 
@@ -47,7 +48,7 @@ export function todayProgress(queue: TodayQueue<QueueProblem>): DayProgress {
   return {
     done: queue.newSlotsFilled + reviewsDone,
     total: queue.newSlots + plannedReviews,
-    extra: queue.reviewedToday - reviewsDone,
+    extra: queue.solvedToday - queue.newSlotsFilled + queue.reviewedToday - reviewsDone,
     segments,
   };
 }
@@ -75,5 +76,6 @@ export function buildTodayQueue<P extends QueueProblem>(
     reviewedToday,
     newSlots,
     newSlotsFilled: Math.min(solvedToday, newSlots),
+    solvedToday,
   };
 }

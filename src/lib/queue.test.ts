@@ -72,6 +72,10 @@ describe("todayProgress", () => {
   it("counts reviews past the plan as extra, not as a bigger bar", () => {
     expect(progressFor(2, 1, 3)).toMatchObject({ done: 3, total: 3, extra: 1 });
   });
+  it("counts new problems past the slots as extra too", () => {
+    expect(progressFor(5, 3, 2)).toMatchObject({ done: 3, total: 3, extra: 2 });
+    expect(progressFor(2, 2, 3)).toMatchObject({ done: 3, total: 3, extra: 2 });
+  });
   it("lists new segments first, then reviews, each marked done", () => {
     expect(progressFor(4, 1, 1).segments).toEqual([
       { kind: "new", done: true },
